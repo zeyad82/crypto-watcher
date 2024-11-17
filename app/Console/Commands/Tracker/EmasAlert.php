@@ -35,6 +35,10 @@ class EmasAlert extends Command
         ->get();
 
         $newCrossovers = [];
+
+        /**
+        * @var VolumeData $data
+        */
         foreach ($recentData as $data) {
             $currentTrend = $this->determineTrend($data);
 
@@ -48,8 +52,8 @@ class EmasAlert extends Command
                     'crypto'         => $crypto,
                     'current_trend'  => $currentTrend,
                     'previous_trend' => $previousTrend,
-                    'ema_7' => $data->price_ema_7,
                     'ema_15' => $data->price_ema_15,
+                    'ema_25' => $data->price_ema_25,
                     'ema_50' => $data->price_ema_50,
                     'price' => $data->close,
                     'timestamp' => $data->timestamp,
@@ -70,15 +74,14 @@ class EmasAlert extends Command
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['current_trend']);
             $message .= sprintf(
-                "\n*%s*\nNew Trend: %s (Previous: %s)\nEMA7: %s\nEMA15: %s\nEMA50: %s\nPrice: %s USDT\nTimestamp: %s\n",
+                "\n*%s*\nNew Trend: %s (Previous: %s)\nEMA15: %s\nEMA25: %s\nEMA50: %s\nPrice: %s USDT\n",
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
-                number_format($crossover['ema_7'], 2),
-                number_format($crossover['ema_15'], 2),
-                number_format($crossover['ema_50'], 2),
-                number_format($crossover['price'], 2),
-                $crossover['timestamp']
+                number_format($crossover['ema_15'], 8),
+                number_format($crossover['ema_25'], 8),
+                number_format($crossover['ema_50'], 8),
+                number_format($crossover['price'], 8)
             );
         }
 
@@ -95,11 +98,11 @@ class EmasAlert extends Command
      */
     protected function determineTrend(VolumeData $data): string
     {
-        if ($data->price_ema_7 > $data->price_ema_15) {
+        if ($data->price_ema_25 > $data->price_ema_50) {
             return 'bullish';
         }
 
-        if ($data->price_ema_7 < $data->price_ema_15) {
+        if ($data->price_ema_25 < $data->price_ema_50) {
             return 'bearish';
         }
 

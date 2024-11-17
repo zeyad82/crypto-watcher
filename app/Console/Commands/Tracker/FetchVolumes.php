@@ -23,7 +23,7 @@ class FetchVolumes extends Command
      *
      * @var string
      */
-    protected $description = 'Fetch volume data for 500 cryptos at a time based on the last_fetched attribute.';
+    protected $description = 'Fetch volume data for x cryptos at a time based on the last_fetched attribute.';
 
     /**
      * Binance API instance.
@@ -55,7 +55,7 @@ class FetchVolumes extends Command
      */
     public function handle()
     {
-        $batchSize = 500; // Fixed batch size
+        $batchSize = 10; // Fixed batch size
         $this->info("Fetching volume data for {$batchSize} cryptos...");
 
         try {
@@ -75,16 +75,17 @@ class FetchVolumes extends Command
 
             foreach ($cryptos as $crypto) {
                 try {
-                    // Fetch the last 100 candles for the trading pair
-                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, '5m', null, 100);
-                    if (count($ohlcv) < 100) {
+                    // Fetch the last 50 candles for the trading pair
+                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, '5m', null, 50);
+                    if (count($ohlcv) < 50) {
                         Log::warning("Insufficient candle data for {$crypto->symbol}");
                         $progressBar->advance();
                         continue;
                     }
 
-                    // Extract data for the most recent candle
-                    $lastCandle = $ohlcv[count($ohlcv) - 1];
+                    // Extract data for the most recent closed candle
+                    $lastCandle = $ohlcv[count($ohlcv) - 2];
+                    
                     $timestamp  = date('Y-m-d H:i:s', $lastCandle[0] / 1000);
                     $open       = $lastCandle[1];
                     $high       = $lastCandle[2];
@@ -97,18 +98,14 @@ class FetchVolumes extends Command
                     $closePrices = array_column($ohlcv, 4);
 
                     // Calculate EMAs for volume
-                    $volumeEma7   = $this->calculateEMA($volumes, 7);
-                    $volumeEma15  = $this->calculateEMA($volumes, 15);
-                    $volumeEma25  = $this->calculateEMA($volumes, 25);
-                    $volumeEma50  = $this->calculateEMA($volumes, 50);
-                    $volumeEma100 = $this->calculateEMA($volumes, 100);
+                    $volumeMa15  = $this->calculateMA($volumes, 15);
+                    $volumeMa25  = $this->calculateMA($volumes, 25);
+                    $volumeMa50  = $this->calculateMA($volumes, 50);
 
                     // Calculate EMAs for price
-                    $priceEma7   = $this->calculateEMA($closePrices, 7);
                     $priceEma15  = $this->calculateEMA($closePrices, 15);
                     $priceEma25  = $this->calculateEMA($closePrices, 25);
                     $priceEma50  = $this->calculateEMA($closePrices, 50);
-                    $priceEma100 = $this->calculateEMA($closePrices, 100);
 
                     // Store data in the database
                     VolumeData::create([
@@ -119,16 +116,12 @@ class FetchVolumes extends Command
                         'close'         => $close,
                         'last_volume'   => $volume,
                         'latest_price'  => $close,
-                        'ema_7'         => $volumeEma7,
-                        'ema_15'        => $volumeEma15,
-                        'ema_25'        => $volumeEma25,
-                        'ema_50'        => $volumeEma50,
-                        'ema_100'       => $volumeEma100,
-                        'price_ema_7'   => $priceEma7,
+                        'vma_15'        => $volumeMa15,
+                        'vma_25'        => $volumeMa25,
+                        'vma_50'        => $volumeMa50,
                         'price_ema_15'  => $priceEma15,
                         'price_ema_25'  => $priceEma25,
                         'price_ema_50'  => $priceEma50,
-                        'price_ema_100' => $priceEma100,
                         'timestamp'     => $timestamp,
                     ]);
 
@@ -174,4 +167,22 @@ class FetchVolumes extends Command
 
         return $ema;
     }
+
+    /**
+     * Calculate the Simple Moving Average (MA).
+     *
+     * @param array $data
+     * @param int $period
+     * @return float
+     */
+    protected function calculateMA(array $data, int $period): float
+    {
+        if (count($data) < $period) {
+            return 0; // Not enough data to calculate MA
+        }
+
+        $subset = array_slice($data, -$period);
+        return array_sum($subset) / $period;
+    }
+
 }

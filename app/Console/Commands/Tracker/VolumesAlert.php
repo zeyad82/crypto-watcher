@@ -36,9 +36,13 @@ class VolumesAlert extends Command
 
 
         $newSpikes = [];
+
+        /**
+         * @var VolumeData $data
+         */
         foreach ($recentData as $data) {
             // Identify volume spikes
-            $isSpike = $data->last_volume > ($data->ema_7 * 1.5);
+            $isSpike = $data->last_volume > ($data->vma_15 * 1.5);
 
             if (!$isSpike) {
                 continue;
@@ -51,12 +55,14 @@ class VolumesAlert extends Command
                 continue; // Skip if an alert was sent within the last 10 minutes
             }
 
+            $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
+
             $newSpikes[] = [
                 'crypto'    => $crypto,
-                'volume'    => $data->last_volume,
-                'ema_7'     => $data->ema_7,
+                'volume'    => $data->last_volume * $data->close,
+                'vma_15'    => $data->vma_15 * $data->close,
                 'price'     => $data->close,
-                'timestamp' => $data->timestamp,
+                'amplitude' => $amplitudePercent
             ];
 
             // Update the last_volume_alert timestamp
@@ -72,12 +78,12 @@ class VolumesAlert extends Command
         $message = "🚨 *New Volume Spike Alerts* 🚨\n";
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
-                "\n*%s*\nVolume: %s\nEMA7: %s\nPrice: %s USDT\nTimestamp: %s\n",
+                "\n*%s*\nVolume: %s USDT%s\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\n",
                 $spike['crypto']->symbol,
                 number_format($spike['volume'], 2),
-                number_format($spike['ema_7'], 2),
-                number_format($spike['price'], 2),
-                $spike['timestamp']->toDateTimeString()
+                number_format($spike['amplitude'], 2),
+                number_format($spike['vma_15'], 2),
+                number_format($spike['price'], 8)
             );
         }
 
@@ -133,4 +139,18 @@ class VolumesAlert extends Command
         }
     }
 
+    /**
+     * Calculate the percentage change between high and low prices.
+     *
+     * @param float $high
+     * @param float $low
+     * @return float
+     */
+    protected function calculateAmplitudePercent(float $high, float $low): float
+    {
+        if ($low == 0) {
+            return 0; // Avoid division by zero
+        }
+        return (($high - $low) / $low) * 100;
+    }
 }

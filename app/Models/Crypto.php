@@ -16,4 +16,17 @@ class Crypto extends Model
         return $this->hasMany(VolumeData::class);
     }
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'last_volume_alert' => 'date',
+            'last_volume_alert' => 'date',
+        ];
+    }
+
 }

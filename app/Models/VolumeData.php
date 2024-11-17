@@ -17,16 +17,12 @@ class VolumeData extends Model
         'close',        // Close price for the candle
         'last_volume',  // Volume for the candle
         'latest_price', // The latest price (usually the same as close)
-        'ema_7',        // 7-period EMA for volume
-        'ema_15',       // 15-period EMA for volume
-        'ema_25',       // 25-period EMA for volume
-        'ema_50',       // 50-period EMA for volume
-        'ema_100',      // 100-period EMA for volume
-        'price_ema_7',  // 7-period EMA for price
+        'vma_15',       // 15-period ma for volume
+        'vma_25',       // 25-period ma for volume
+        'vma_50',       // 50-period ma for volume
         'price_ema_15', // 15-period EMA for price
         'price_ema_25', // 25-period EMA for price
         'price_ema_50', // 50-period EMA for price
-        'price_ema_100',// 100-period EMA for price
         'timestamp',    // Timestamp of the candle
     ];
 
