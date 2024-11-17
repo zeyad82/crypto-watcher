@@ -9,7 +9,7 @@ class Crypto extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['symbol', 'base_asset', 'quote_asset'];
+    protected $fillable = ['symbol', 'base_asset', 'quote_asset', 'last_fetched'];
 
     public function volumeData()
     {
