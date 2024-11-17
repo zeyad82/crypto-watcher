@@ -30,8 +30,10 @@ class VolumesAlert extends Command
 
         // Fetch recent volume data
         $recentData = VolumeData::with('crypto')
-            ->where('timestamp', '>=', now()->subMinutes(5))
-            ->get();
+        ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
+        ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
+        ->get();
+
 
         $newSpikes = [];
         foreach ($recentData as $data) {
@@ -95,16 +97,40 @@ class VolumesAlert extends Command
     {
         $url = "https://api.telegram.org/bot{$this->telegramBotToken}/sendMessage";
 
+        // Split the message by individual alerts (based on new lines for each alert)
+        $alerts = explode("\n\n", trim($message)); // Assuming each alert is separated by two newlines
+        $chunk = "";
+        $chunks = [];
+
+        foreach ($alerts as $alert) {
+            // Add the next alert if it fits within the 4000-character limit
+            if (strlen($chunk) + strlen($alert) + 2 <= 4000) {
+                $chunk .= ($chunk === "" ? "" : "\n\n") . $alert;
+            } else {
+                // Store the current chunk and start a new one
+                $chunks[] = $chunk;
+                $chunk = $alert;
+            }
+        }
+
+        // Add the last chunk
+        if ($chunk !== "") {
+            $chunks[] = $chunk;
+        }
+
         try {
-            $this->httpClient->post($url, [
-                'json' => [
-                    'chat_id'    => $this->telegramChatId,
-                    'text'       => $message,
-                    'parse_mode' => 'Markdown',
-                ],
-            ]);
+            foreach ($chunks as $chunkMessage) {
+                $this->httpClient->post($url, [
+                    'json' => [
+                        'chat_id' => $this->telegramChatId,
+                        'text' => $chunkMessage,
+                        'parse_mode' => 'Markdown',
+                    ],
+                ]);
+            }
         } catch (\Exception $e) {
             $this->error("Failed to send Telegram alert: " . $e->getMessage());
         }
     }
+
 }
