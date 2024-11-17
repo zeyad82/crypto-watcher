@@ -3,10 +3,8 @@
 namespace App\Console\Commands\Tracker;
 
 use App\Models\Crypto;
-use Carbon\Carbon;
 use ccxt\binance;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class FetchCryptos extends Command
 {
@@ -15,14 +13,14 @@ class FetchCryptos extends Command
      *
      * @var string
      */
-    protected $signature = 'tracker:fetch-pairs';
+    protected $signature = 'tracker:fetch-cryptos';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Fetch all USDT trading pairs from Binance and store them in the database.';
+    protected $description = 'Fetch all currently listed trading pairs from Binance and update the database.';
 
     /**
      * Binance API instance.
@@ -31,11 +29,6 @@ class FetchCryptos extends Command
      */
     protected $exchange;
 
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
     public function __construct()
     {
         parent::__construct();
@@ -49,47 +42,70 @@ class FetchCryptos extends Command
 
     /**
      * Execute the console command.
-     *
-     * @return int
      */
     public function handle()
     {
-        $this->info('Fetching USDT trading pairs from Binance...');
+        $this->info('Fetching currently listed trading pairs from Binance...');
 
         try {
             // Fetch all market pairs from Binance
             $markets = $this->exchange->fetch_markets();
 
-            // Filter USDT pairs
-            $usdtMarkets = array_filter($markets, function ($market) {
-                return str_ends_with($market['symbol'], 'USDT');
-            });
+            // Filter for active trading pairs
+            $activeMarkets = collect($markets)
+                ->filter(fn($market) => $market['active'])
+                ->pluck('symbol')
+                ->toArray();
 
-            // Initialize progress bar
-            $progressBar = $this->output->createProgressBar(count($usdtMarkets));
-            $progressBar->start();
-
-            foreach ($usdtMarkets as $market) {
-                // Insert or update the crypto record
-                Crypto::updateOrCreate(
-                    ['symbol' => $market['symbol']],
-                    [
-                        'base_asset'   => $market['base'],
-                        'quote_asset'  => $market['quote'],
-                        'last_fetched' => Carbon::now(),
-                    ]
-                );
-
-                $progressBar->advance();
+            if (empty($activeMarkets)) {
+                $this->error('No active trading pairs found.');
+                return 1;
             }
 
-            $progressBar->finish();
-            $this->info("\nSuccessfully stored USDT trading pairs in the database.");
+            // Sync with the database
+            $this->syncCryptos($activeMarkets);
+
+            $this->info('Successfully updated cryptos in the database.');
         } catch (\Exception $e) {
-            Log::error('Error fetching trading pairs: ' . $e->getMessage());
-            $this->error('Failed to fetch trading pairs. Check the logs for details.');
+            $this->error('Error fetching trading pairs: ' . $e->getMessage());
         }
 
         return 0;
+    }
+
+    /**
+     * Sync cryptos in the database with active Binance markets.
+     *
+     * @param array $activeMarkets
+     */
+    protected function syncCryptos(array $activeMarkets)
+    {
+        $this->info('Updating cryptos in the database...');
+        $progressBar = $this->output->createProgressBar(count($activeMarkets));
+        $progressBar->start();
+
+        // Mark all current cryptos as inactive
+        Crypto::whereNotIn('symbol', $activeMarkets)->delete();
+
+        // Insert or update active cryptos
+        foreach ($activeMarkets as $symbol) {
+            [$base, $quote] = explode('/', $symbol);
+
+            Crypto::updateOrCreate(
+                ['symbol' => $symbol],
+                [
+                    'base_asset'   => $base,
+                    'quote_asset'  => $quote,
+                    'last_fetched' => now(),
+                ]
+            );
+
+            // Advance the progress bar
+            $progressBar->advance();
+        }
+
+        $progressBar->finish();
+        $this->newLine();
+        $this->info('Crypto update complete.');
     }
 }
