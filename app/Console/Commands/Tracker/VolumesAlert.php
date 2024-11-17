@@ -78,7 +78,7 @@ class VolumesAlert extends Command
         $message = "🚨 *New Volume Spike Alerts* 🚨\n";
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
-                "\n*%s*\nVolume: %s USDT%s\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\n",
+                "\n*%s*\nVolume: %s USDT\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\n",
                 $spike['crypto']->symbol,
                 number_format($spike['volume'], 2),
                 number_format($spike['amplitude'], 2),
