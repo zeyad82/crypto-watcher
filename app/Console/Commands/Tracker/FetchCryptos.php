@@ -20,7 +20,7 @@ class FetchCryptos extends Command
      *
      * @var string
      */
-    protected $description = 'Fetch all currently listed trading pairs from Binance and update the database.';
+    protected $description = 'Fetch all currently listed USDT trading pairs from Binance and update the database.';
 
     /**
      * Binance API instance.
@@ -45,27 +45,26 @@ class FetchCryptos extends Command
      */
     public function handle()
     {
-        $this->info('Fetching currently listed trading pairs from Binance...');
+        $this->info('Fetching currently listed USDT trading pairs from Binance...');
 
         try {
             // Fetch all market pairs from Binance
             $markets = $this->exchange->fetch_markets();
 
-            // Filter for active trading pairs
-            $activeMarkets = collect($markets)
-                ->filter(fn($market) => $market['active'])
-                ->pluck('symbol')
+            // Filter for active USDT trading pairs
+            $usdtMarkets = collect($markets)
+                ->filter(fn($market) => $market['active'] && $market['quote'] === 'USDT')
                 ->toArray();
 
-            if (empty($activeMarkets)) {
-                $this->error('No active trading pairs found.');
+            if (empty($usdtMarkets)) {
+                $this->error('No active USDT trading pairs found.');
                 return 1;
             }
 
             // Sync with the database
-            $this->syncCryptos($activeMarkets);
+            $this->syncCryptos($usdtMarkets);
 
-            $this->info('Successfully updated cryptos in the database.');
+            $this->info('Successfully updated USDT trading pairs in the database.');
         } catch (\Exception $e) {
             $this->error('Error fetching trading pairs: ' . $e->getMessage());
         }
@@ -74,22 +73,24 @@ class FetchCryptos extends Command
     }
 
     /**
-     * Sync cryptos in the database with active Binance markets.
+     * Sync cryptos in the database with active Binance USDT markets.
      *
-     * @param array $activeMarkets
+     * @param array $usdtMarkets
      */
-    protected function syncCryptos(array $activeMarkets)
+    protected function syncCryptos(array $usdtMarkets)
     {
-        $this->info('Updating cryptos in the database...');
-        $progressBar = $this->output->createProgressBar(count($activeMarkets));
+        $this->info('Updating USDT trading pairs in the database...');
+        $progressBar = $this->output->createProgressBar(count($usdtMarkets));
         $progressBar->start();
 
-        // Mark all current cryptos as inactive
-        Crypto::whereNotIn('symbol', $activeMarkets)->delete();
+        // Collect existing USDT symbols in the database
+        $existingSymbols = Crypto::pluck('symbol')->toArray();
 
-        // Insert or update active cryptos
-        foreach ($activeMarkets as $symbol) {
-            [$base, $quote] = explode('/', $symbol);
+        // Update or create USDT cryptos
+        foreach ($usdtMarkets as $market) {
+            $symbol = $market['symbol'];
+            $base   = $market['base'];
+            $quote  = $market['quote'];
 
             Crypto::updateOrCreate(
                 ['symbol' => $symbol],
@@ -104,8 +105,12 @@ class FetchCryptos extends Command
             $progressBar->advance();
         }
 
+        // Remove cryptos no longer active in USDT markets
+        $activeSymbols = array_column($usdtMarkets, 'symbol');
+        Crypto::whereNotIn('symbol', $activeSymbols)->delete();
+
         $progressBar->finish();
         $this->newLine();
-        $this->info('Crypto update complete.');
+        $this->info('USDT trading pairs update complete.');
     }
 }
