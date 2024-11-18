@@ -98,11 +98,11 @@ class EmasAlert extends Command
      */
     protected function determineTrend(VolumeData $data): string
     {
-        if ($data->price_ema_25 > $data->price_ema_50) {
+        if ($data->price_ema_15 > $data->price_ema_25) {
             return 'bullish';
         }
 
-        if ($data->price_ema_25 < $data->price_ema_50) {
+        if ($data->price_ema_15 < $data->price_ema_25) {
             return 'bearish';
         }
 

@@ -55,7 +55,7 @@ class FetchVolumes extends Command
      */
     public function handle()
     {
-        $batchSize = 10; // Fixed batch size
+        $batchSize = 400; // Fixed batch size
         $this->info("Fetching volume data for {$batchSize} cryptos...");
 
         try {
@@ -76,7 +76,7 @@ class FetchVolumes extends Command
             foreach ($cryptos as $crypto) {
                 try {
                     // Fetch the last 50 candles for the trading pair
-                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, '5m', null, 50);
+                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, '15m', null, 50);
                     if (count($ohlcv) < 50) {
                         Log::warning("Insufficient candle data for {$crypto->symbol}");
                         $progressBar->advance();
@@ -108,8 +108,10 @@ class FetchVolumes extends Command
                     $priceEma50  = $this->calculateEMA($closePrices, 50);
 
                     // Store data in the database
-                    VolumeData::create([
+                    VolumeData::firstOrCreate([
                         'crypto_id'     => $crypto->id,
+                        'timestamp'     => $timestamp
+                    ], [
                         'open'          => $open,
                         'high'          => $high,
                         'low'           => $low,
@@ -122,7 +124,6 @@ class FetchVolumes extends Command
                         'price_ema_15'  => $priceEma15,
                         'price_ema_25'  => $priceEma25,
                         'price_ema_50'  => $priceEma50,
-                        'timestamp'     => $timestamp,
                     ]);
 
                     // Update last_fetched timestamp for the crypto

@@ -41,21 +41,20 @@ class VolumesAlert extends Command
          * @var VolumeData $data
          */
         foreach ($recentData as $data) {
-            // Identify volume spikes
-            $isSpike = $data->last_volume > ($data->vma_15 * 1.5);
-
-            if (!$isSpike) {
-                continue;
-            }
-
             $crypto = $data->crypto;
 
             // Check if a recent alert was already sent
-            if ($crypto->last_volume_alert && $crypto->last_volume_alert->greaterThanOrEqualTo(now()->subMinutes(10))) {
+            if ($crypto->last_volume_alert && $crypto->last_volume_alert->greaterThanOrEqualTo(now()->subMinutes(20))) {
                 continue; // Skip if an alert was sent within the last 10 minutes
             }
 
+            // Identify volume spikes
+            $isSpike = $data->last_volume > ($data->vma_15 * 2);
             $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
+
+            if (! $isSpike || $amplitudePercent < 1.2) {
+                continue;
+            }
 
             $newSpikes[] = [
                 'crypto'    => $crypto,
