@@ -80,7 +80,7 @@ class VolumesAlert extends Command
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
                 "\n*%s*\nVolume: %s USDT\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\nTime: %s\n",
-                $spike['crypto']->symbol . ($spike['volume'] == 'green' ? ' 🟩' : ' 🟥'),
+                $spike['crypto']->symbol . ($spike['candle_color'] == 'green' ? ' 🟩' : ' 🟥'),
                 number_format($spike['volume'], 2),
                 number_format($spike['amplitude'], 2),
                 number_format($spike['vma_15'], 2),
