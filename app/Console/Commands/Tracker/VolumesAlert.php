@@ -20,7 +20,7 @@ class VolumesAlert extends Command
         parent::__construct();
 
         $this->telegramBotToken = config('volume.telegram.token'); // Telegram Bot Token
-        $this->telegramChatId   = config('volume.telegram.chat_id'); // Telegram Chat ID
+        $this->telegramChatId   = config('volume.telegram.volumes_chat_id'); // Telegram Chat ID
         $this->httpClient       = new Client(); // HTTP Client for Telegram API
     }
 
@@ -62,7 +62,8 @@ class VolumesAlert extends Command
                 'vma_15'    => $data->vma_15 * $data->close,
                 'price'     => $data->close,
                 'amplitude' => $amplitudePercent,
-                'candle_color' => $data->close > $data->open ? 'green' : 'red'
+                'candle_color' => $data->close > $data->open ? 'green' : 'red',
+                'timestamp' => $data->timestamp,
             ];
 
             // Update the last_volume_alert timestamp
@@ -75,15 +76,16 @@ class VolumesAlert extends Command
         }
 
         // Create alert message
-        $message = "🚨 *New Volume Spike Alerts* 🚨\n";
+        $message = "*New Alerts* 🚨\n";
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
-                "\n*%s*\nVolume: %s USDT\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\n",
+                "\n*%s*\nVolume: %s USDT\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\nTime: %s\n",
                 $spike['crypto']->symbol . ($spike['volume'] == 'green' ? ' 🟩' : ' 🟥'),
                 number_format($spike['volume'], 2),
                 number_format($spike['amplitude'], 2),
                 number_format($spike['vma_15'], 2),
-                number_format($spike['price'], 8)
+                number_format($spike['price'], 8),
+                $spike['timestamp']
             );
         }
 

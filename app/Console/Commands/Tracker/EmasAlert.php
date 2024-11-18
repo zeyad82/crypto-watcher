@@ -20,7 +20,7 @@ class EmasAlert extends Command
         parent::__construct();
 
         $this->telegramBotToken = config('volume.telegram.token'); // Telegram Bot Token
-        $this->telegramChatId   = config('volume.telegram.chat_id'); // Telegram Chat ID
+        $this->telegramChatId   = config('volume.telegram.emas_chat_id'); // Telegram Chat ID
         $this->httpClient       = new Client(); // HTTP Client for Telegram API
     }
 
@@ -70,18 +70,19 @@ class EmasAlert extends Command
         }
 
         // Send the alerts to Telegram
-        $message = "📈 *New EMA Crossover Alerts* 📉\n";
+        $message = "*New Alerts* 📈📉\n";
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['current_trend']);
             $message .= sprintf(
-                "\n*%s*\nNew Trend: %s (Previous: %s)\nEMA15: %s\nEMA25: %s\nEMA50: %s\nPrice: %s USDT\n",
+                "\n*%s*\nNew Trend: %s (Previous: %s)\nEMA15: %s\nEMA25: %s\nEMA50: %s\nPrice: %s USDT\nTime: %s\n",
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
                 number_format($crossover['ema_15'], 8),
                 number_format($crossover['ema_25'], 8),
                 number_format($crossover['ema_50'], 8),
-                number_format($crossover['price'], 8)
+                number_format($crossover['price'], 8),
+                $crossover['timestamp']
             );
         }
 
@@ -98,11 +99,11 @@ class EmasAlert extends Command
      */
     protected function determineTrend(VolumeData $data): string
     {
-        if ($data->price_ema_15 > $data->price_ema_25) {
+        if ($data->price_ema_15 > $data->price_ema_25 && $data->price_ema_25 > $data->price_ema_50) {
             return 'bullish';
         }
 
-        if ($data->price_ema_15 < $data->price_ema_25) {
+        if ($data->price_ema_15 < $data->price_ema_25 && $data->price_ema_25 < $data->price_ema_50) {
             return 'bearish';
         }
 
