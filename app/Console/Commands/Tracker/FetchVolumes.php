@@ -94,8 +94,10 @@ class FetchVolumes extends Command
                     $volume     = $lastCandle[5];
 
                     // Extract data arrays for EMA calculations
-                    $volumes     = array_column($ohlcv, 5);
+                    $highs = array_column($ohlcv, 2);
+                    $lows = array_column($ohlcv, 3);
                     $closePrices = array_column($ohlcv, 4);
+                    $volumes     = array_column($ohlcv, 5);
 
                     // Calculate EMAs for volume
                     $volumeMa15  = $this->calculateMA($volumes, 15);
@@ -107,8 +109,10 @@ class FetchVolumes extends Command
                     $priceEma25  = $this->calculateEMA($closePrices, 25);
                     $priceEma50  = $this->calculateEMA($closePrices, 50);
 
+                    $atr = $this->calculateATR($highs, $lows, $closePrices);
+
                     // Store data in the database
-                    VolumeData::firstOrCreate([
+                    $data = VolumeData::firstOrCreate([
                         'crypto_id'     => $crypto->id,
                         'timestamp'     => $timestamp
                     ], [
@@ -124,6 +128,9 @@ class FetchVolumes extends Command
                         'price_ema_15'  => $priceEma15,
                         'price_ema_25'  => $priceEma25,
                         'price_ema_50'  => $priceEma50,
+                        'meta'          => [
+                            'atr' => $atr
+                        ]
                     ]);
 
                     // Update last_fetched timestamp for the crypto
@@ -186,4 +193,27 @@ class FetchVolumes extends Command
         return array_sum($subset) / $period;
     }
 
+    /**
+     * Calculate Average True Range (ATR).
+     *
+     * @param array $highs
+     * @param array $lows
+     * @param array $closes
+     * @param int $period
+     * @return float
+     */
+    protected function calculateATR(array $highs, array $lows, array $closes, int $period = 14): float
+    {
+        $tr = [];
+        for ($i = 1; $i < count($highs); $i++) {
+            $tr[] = max(
+                $highs[$i] - $lows[$i],
+                abs($highs[$i] - $closes[$i - 1]),
+                abs($lows[$i] - $closes[$i - 1])
+            );
+        }
+
+        $atr = array_sum(array_slice($tr, -$period)) / $period;
+        return $atr;
+    }
 }

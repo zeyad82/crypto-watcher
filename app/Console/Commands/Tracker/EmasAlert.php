@@ -6,6 +6,7 @@ use App\Models\Crypto;
 use App\Models\VolumeData;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class EmasAlert extends Command
 {
@@ -46,8 +47,11 @@ class EmasAlert extends Command
             $crypto        = $data->crypto;
             $previousTrend = $crypto->last_trend;
 
+            // Update the last_trend in the database
+            $crypto->update(['last_trend' => $currentTrend]);
+
             // Check if the trend has changed
-            if ($currentTrend !== $previousTrend) {
+            if ($currentTrend !== $previousTrend && $currentTrend != 'neutral') {
                 $newCrossovers[] = [
                     'crypto'         => $crypto,
                     'current_trend'  => $currentTrend,
@@ -57,10 +61,10 @@ class EmasAlert extends Command
                     'ema_50' => $data->price_ema_50,
                     'price' => $data->close,
                     'timestamp' => $data->timestamp,
+                    'atr'       => $data->meta->get('atr'),
                 ];
 
-                // Update the last_trend in the database
-                $crypto->update(['last_trend' => $currentTrend]);
+                Log::info('crossover', $newCrossovers + ['strong' => $data->meta->get('atr') > 0.5, 'atr ' => $data->meta->get('atr')]);
             }
         }
 
@@ -74,13 +78,14 @@ class EmasAlert extends Command
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['current_trend']);
             $message .= sprintf(
-                "\n*%s*\nNew Trend: %s (Previous: %s)\nEMA15: %s\nEMA25: %s\nEMA50: %s\nPrice: %s USDT\nTime: %s\n",
+                "\n*%s*\nNew Trend: %s (Previous: %s)\nEMA15: %s\nEMA25: %s\nEMA50: %s\nATR: %s\nPrice: %s USDT\nTime: %s\n",
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
                 number_format($crossover['ema_15'], 8),
                 number_format($crossover['ema_25'], 8),
                 number_format($crossover['ema_50'], 8),
+                $crossover['atr'],
                 number_format($crossover['price'], 8),
                 $crossover['timestamp']
             );
@@ -99,6 +104,10 @@ class EmasAlert extends Command
      */
     protected function determineTrend(VolumeData $data): string
     {
+        if($data->meta->get('atr') < 0.5) {
+            return 'neutral';
+        }
+
         if ($data->price_ema_15 > $data->price_ema_25 && $data->price_ema_25 > $data->price_ema_50) {
             return 'bullish';
         }

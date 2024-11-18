@@ -31,6 +31,8 @@ return new class extends Migration
             $table->decimal('price_ema_25', 20, 8)->nullable(); // 25-period EMA for price
             $table->decimal('price_ema_50', 20, 8)->nullable(); // 50-period EMA for price
 
+            $table->json('meta')->nullable();
+
             $table->timestamp('timestamp'); // Timestamp of the recorded data
             $table->timestamps(); // Created and updated timestamps
         });

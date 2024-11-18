@@ -84,16 +84,13 @@ namespace App\Models{
  * @property string|null $close
  * @property string|null $last_volume
  * @property string|null $latest_price
- * @property string|null $ema_7
- * @property string|null $ema_15
- * @property string|null $ema_25
- * @property string|null $ema_50
- * @property string|null $ema_100
- * @property string|null $price_ema_7
+ * @property string|null $vma_15
+ * @property string|null $vma_25
+ * @property string|null $vma_50
  * @property string|null $price_ema_15
  * @property string|null $price_ema_25
  * @property string|null $price_ema_50
- * @property string|null $price_ema_100
+ * @property \Illuminate\Support\Collection|null $meta
  * @property string $timestamp
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -104,24 +101,21 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereClose($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereCryptoId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereEma100($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereEma15($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereEma25($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereEma50($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereEma7($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereHigh($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereLastVolume($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereLatestPrice($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereLow($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereMeta($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereOpen($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData wherePriceEma100($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData wherePriceEma15($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData wherePriceEma25($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData wherePriceEma50($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData wherePriceEma7($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereTimestamp($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereVma15($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereVma25($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|VolumeData whereVma50($value)
  */
 	class VolumeData extends \Eloquent {}
 }

@@ -24,10 +24,23 @@ class VolumeData extends Model
         'price_ema_25', // 25-period EMA for price
         'price_ema_50', // 50-period EMA for price
         'timestamp',    // Timestamp of the candle
+        'meta'
     ];
 
     public function crypto()
     {
         return $this->belongsTo(Crypto::class);
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'meta' => 'collection',
+        ];
     }
 }
