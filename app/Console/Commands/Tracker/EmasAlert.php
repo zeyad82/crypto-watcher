@@ -81,7 +81,7 @@ class EmasAlert extends Command
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['current_trend']);
             $message .= sprintf(
-                "\n*%s*\nNew Trend: %s (Previous: %s)\nMACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\nEMA15: %s\nEMA25: %s\nEMA50: %s\nATR: %s\nPrice: %s USDT\nTime: %s\n",
+                "\n*#%s*\nNew Trend: %s (Previous: %s)\nMACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\nEMA15: %s\nEMA25: %s\nEMA50: %s\nATR: %s\nPrice: %s USDT\nTime: %s\n",
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
@@ -110,23 +110,24 @@ class EmasAlert extends Command
      */
     protected function determineTrend(VolumeData $data): string
     {
+        if($data->meta->get('atr') < 0.5) {
+            return 'neutral';
+        }
+
         $macdLine = $data->meta->get('macd_line');
         $signalLine = $data->meta->get('signal_line');
         $histogram = $data->meta->get('histogram');
 
         // Bullish Trend: MACD Line is above Signal Line and Histogram is growing
-        if ($macdLine > $signalLine && abs($histogram) > 2) {
+        if ($macdLine > $signalLine && $histogram > 0) {
             return 'bullish';
         }
 
         // Bearish Trend: MACD Line is below Signal Line and Histogram is growing
-        if ($macdLine < $signalLine && abs($histogram) > 2) {
+        if ($macdLine < $signalLine && $histogram < 0) {
             return 'bearish';
         }
 
-        // if($data->meta->get('atr') < 0.5) {
-        //     return 'neutral';
-        // }
 
         // if ($data->price_ema_15 > $data->price_ema_25 && $data->price_ema_25 > $data->price_ema_50) {
         //     return 'bullish';
