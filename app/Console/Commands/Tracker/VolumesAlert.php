@@ -61,7 +61,8 @@ class VolumesAlert extends Command
                 'volume'    => $data->last_volume * $data->close,
                 'vma_15'    => $data->vma_15 * $data->close,
                 'price'     => $data->close,
-                'amplitude' => $amplitudePercent
+                'amplitude' => $amplitudePercent,
+                'candle_color' => $data->close > $data->open ? 'green' : 'red'
             ];
 
             // Update the last_volume_alert timestamp
@@ -78,7 +79,7 @@ class VolumesAlert extends Command
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
                 "\n*%s*\nVolume: %s USDT\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\n",
-                $spike['crypto']->symbol,
+                $spike['crypto']->symbol . ($spike['volume'] == 'green' ? ' 🟩' : ' 🟥'),
                 number_format($spike['volume'], 2),
                 number_format($spike['amplitude'], 2),
                 number_format($spike['vma_15'], 2),
