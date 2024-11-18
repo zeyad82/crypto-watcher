@@ -111,6 +111,8 @@ class FetchVolumes extends Command
 
                     $atr = $this->calculateATR($highs, $lows, $closePrices);
 
+                    $macdData = $this->calculateMACD($closePrices);
+
                     // Store data in the database
                     $data = VolumeData::firstOrCreate([
                         'crypto_id'     => $crypto->id,
@@ -129,7 +131,10 @@ class FetchVolumes extends Command
                         'price_ema_25'  => $priceEma25,
                         'price_ema_50'  => $priceEma50,
                         'meta'          => [
-                            'atr' => $atr
+                            'atr' => $atr,
+                            'macd_line' => $macdData['macd_line'],
+                            'signal_line' => $macdData['signal_line'],
+                            'histogram' => $macdData['histogram'],
                         ]
                     ]);
 
@@ -216,4 +221,52 @@ class FetchVolumes extends Command
         $atr = array_sum(array_slice($tr, -$period)) / $period;
         return $atr;
     }
+
+    /**
+     * Calculate MACD components.
+     *
+     * @param array $closingPrices
+     * @return array
+     */
+    protected function calculateMACD(array $closingPrices): array
+    {
+        $ema12 = $this->calculateEMAs($closingPrices, 12); // Short EMA
+        $ema26 = $this->calculateEMAs($closingPrices, 26); // Long EMA
+
+        // Calculate MACD Line
+        $macdLine = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
+
+        // Calculate Signal Line (9-period EMA of MACD Line)
+        $signalLine = $this->calculateEMAs($macdLine, 9);
+
+        // Calculate Histogram
+        $histogram = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
+
+        return [
+            'macd_line' => end($macdLine), // Latest MACD Line
+            'signal_line' => end($signalLine), // Latest Signal Line
+            'histogram' => end($histogram), // Latest Histogram
+        ];
+    }
+
+    /**
+     * Calculate Exponential Moving Average (EMA).
+     *
+     * @param array $values Array of closing prices.
+     * @param int $period EMA period (e.g., 12, 26, 9).
+     * @return array Array of EMA values.
+     */
+    protected function calculateEMAs(array $values, int $period): array
+    {
+        $k = 2 / ($period + 1); // Smoothing factor
+        $ema = [];
+        $ema[0] = $values[0]; // Initialize EMA with the first value
+
+        for ($i = 1; $i < count($values); $i++) {
+            $ema[$i] = ($values[$i] * $k) + ($ema[$i - 1] * (1 - $k)); // EMA formula
+        }
+
+        return $ema;
+    }
+
 }
