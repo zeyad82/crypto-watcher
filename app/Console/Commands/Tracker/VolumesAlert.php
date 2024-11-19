@@ -50,7 +50,7 @@ class VolumesAlert extends Command
             }
 
             // Identify volume spikes
-            $isSpike = $data->last_volume > ($data->vma_15 * 2);
+            $isSpike = $data->last_volume > ($data->vma_15 * 1.5);
             $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
 
             if (! $isSpike || $amplitudePercent < 3) {
@@ -60,7 +60,7 @@ class VolumesAlert extends Command
             $newSpikes[] = [
                 'crypto'    => $crypto,
                 'volume'    => $data->last_volume * $data->close,
-                'vma_15'    => $data->vma_15 * $data->close,
+                'vma'       => $data->vma_15 * $data->close,
                 'price'     => $data->close,
                 'amplitude' => $amplitudePercent,
                 'candle_color' => $data->close > $data->open ? 'green' : 'red',
@@ -80,11 +80,11 @@ class VolumesAlert extends Command
         $message = "*New Alerts* 🚨\n";
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
-                "\n*#%s*\nVolume: %s USDT\nAmplitude: %s%%\nEMA15: %s USDT\nPrice: %s USDT\nTime: %s\n",
+                "\n*#%s*\nVolume: %s USDT\nAmplitude: %s%%\nVMA: %s USDT\nPrice: %s USDT\nTime: %s\n",
                 $spike['crypto']->symbol . ($spike['candle_color'] == 'green' ? ' 🟩' : ' 🟥'),
                 number_format($spike['volume'], 2),
                 number_format($spike['amplitude'], 2),
-                number_format($spike['vma_15'], 2),
+                number_format($spike['vma'], 2),
                 number_format($spike['price'], 8),
                 Carbon::parse($spike['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s') // Convert timestamp to SA timezone
             );

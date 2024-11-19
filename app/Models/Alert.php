@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Alert extends Model
 {
-    protected $fillable = ['crypto_id', 'trend', 'previous_trend', 'entry', 'stop_loss', 'tp1', 'tp2', 'tp3'];
+    protected $fillable = ['crypto_id', 'trend', 'previous_trend', 'entry', 'stop_loss', 'tp1', 'tp2', 'tp3', 'result', 'status'];
 
     public function crypto()
     {

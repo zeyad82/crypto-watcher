@@ -21,7 +21,7 @@ return new class extends Migration
             $table->decimal('tp1', 20, 8);
             $table->decimal('tp2', 20, 8);
             $table->decimal('tp3', 20, 8);
-            $table->unsignedInteger('result')->nullable(); // -1 for hitting sl, 1 for tp1, 2 for tp2, 3 for tp3
+            $table->tinyInteger('result')->nullable(); // -1 for hitting sl, 1 for tp1, 2 for tp2, 3 for tp3
             $table->decimal('highest_price', 20, 8)->nullable(); // Tracks the highest price since the alert
             $table->decimal('lowest_price', 20, 8)->nullable();  // Tracks the lowest price since the alert
             $table->string('status')->default('open'); // Tracks if the alert is open, closed, or partially hit

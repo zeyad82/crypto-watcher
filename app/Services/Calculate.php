@@ -74,45 +74,61 @@ class Calculate
     }
 
     /**
-     * Calculate the Volume-Weighted EMA (VW-EMA).
-     * 
+     * Calculate Volume-Weighted EMA (VWEMA) as an array.
+     *
      * @param array $prices Array of closing prices.
      * @param array $volumes Array of corresponding volumes.
      * @param int $period EMA period (e.g., 12, 26).
-     * @return float
+     * @return array Array of VWEMA values.
      */
-    public static function VWEMA(array $prices, array $volumes, int $period): float
+    public static function VWEMAs(array $prices, array $volumes, int $period): array
     {
-        $weightedPrices = array_map(fn($price, $volume) => $price * $volume, $prices, $volumes);
-        $totalVolume    = array_sum(array_slice($volumes, -$period));
+        $k       = 2 / ($period + 1); // Smoothing factor
+        $vwemas  = [];
+        $weights = array_map(fn($price, $volume) => $volume > 0 ? $price * $volume : 0, $prices, $volumes);
 
-        if ($totalVolume == 0) {
-            return 0; // Avoid division by zero.
+        // Initialize first VWEMA value with the weighted average
+        $vwemas[0] = $volumes[0] > 0 ? $weights[0] / $volumes[0] : $prices[0];
+
+        for ($i = 1; $i < count($prices); $i++) {
+            // Skip calculations for zero volume and provide fallback
+            $currentVolume = $volumes[$i] > 0 ? $volumes[$i] : 1; // Avoid zero division
+            $currentWeight = $prices[$i] * $currentVolume;
+
+            $vwemas[$i] = ($currentWeight * $k) + ($vwemas[$i - 1] * (1 - $k));
         }
 
-        return array_sum(array_slice($weightedPrices, -$period)) / $totalVolume;
+        return $vwemas;
     }
 
+
     /**
-     * Calculate Volume-Weighted MACD.
-     * 
+     * Calculate Volume-Weighted MACD (VW-MACD).
+     *
      * @param array $prices Array of closing prices.
      * @param array $volumes Array of corresponding volumes.
      * @return array
      */
     public static function VW_MACD(array $prices, array $volumes): array
     {
-        $vwema12 = Self::VWEMA($prices, $volumes, 12); // Short VWEMA
-        $vwema26 = Self::VWEMA($prices, $volumes, 26); // Long VWEMA
+        // Step 1: Calculate VWEMAs for short and long periods as arrays
+        $vwema12 = Self::VWEMAs($prices, $volumes, 12); // Array of 12-period VWEMA values
+        $vwema26 = Self::VWEMAs($prices, $volumes, 26); // Array of 26-period VWEMA values
 
-        $macdLine   = $vwema12 - $vwema26; // MACD Line
-        $signalLine = Self::EMA([$macdLine], 9); // Signal Line (standard EMA)
-        $histogram  = $macdLine - $signalLine;
+        // Step 2: Calculate the VW-MACD Line as the difference between VWEMA arrays
+        $vwMacdLine = array_map(fn($short, $long) => $short - $long, $vwema12, $vwema26);
 
+        // Step 3: Calculate the Signal Line as a 9-period EMA of the VW-MACD Line
+        $signalLine = Self::EMAs($vwMacdLine, 9); // Array of Signal Line values
+
+        // Step 4: Calculate Histogram as the difference between VW-MACD Line and Signal Line
+        $histogram = array_map(fn($macd, $signal) => $macd - $signal, $vwMacdLine, $signalLine);
+
+        // Step 5: Return the latest values of MACD Line,s Signal Line, and Histogram
         return [
-            'macd_line'   => $macdLine,
-            'signal_line' => $signalLine,
-            'histogram'   => $histogram,
+            'macd_line'   => end($vwMacdLine),
+            'signal_line' => end($signalLine),
+            'histogram'   => end($histogram),
         ];
     }
 

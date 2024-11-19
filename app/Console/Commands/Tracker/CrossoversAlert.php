@@ -64,15 +64,15 @@ class CrossoversAlert extends Command
                     'price' => $data->close,
                     'timestamp' => $data->timestamp,
                     'atr'       => $data->meta->get('atr'),
-                    'macd_line' => $data->meta->get('macd_line'),
-                    'signal_line' => $data->meta->get('signal_line'),
-                    'histogram' => $data->meta->get('histogram'),
+                    'macd_line' => $data->meta->get('vw_macd_line'),
+                    'signal_line' => $data->meta->get('vw_signal_line'),
+                    'histogram' => $data->meta->get('vw_histogram'),
                     'rsi' => $data->meta->get('rsi'),
                     'entry'          => $data->latest_price,
-                    'stop_loss'      => $data->latest_price - (1.5 * $data->meta->get('atr')),
-                    'tp1'            => $data->latest_price + (1 * $data->meta->get('atr')),
-                    'tp2'            => $data->latest_price + (2 * $data->meta->get('atr')),
-                    'tp3'            => $data->latest_price + (3 * $data->meta->get('atr')),
+                    'stop_loss'      => ($data->latest_price - (1.5 * $data->meta->get('atr'))),
+                    'tp1'            => ($data->latest_price + (1 * $data->meta->get('atr'))),
+                    'tp2'            => ($data->latest_price + (2 * $data->meta->get('atr'))),
+                    'tp3'            => ($data->latest_price + (3 * $data->meta->get('atr'))),
                 ];
 
                 $newCrossovers[] = $crossover;
@@ -97,9 +97,9 @@ class CrossoversAlert extends Command
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
-                $crossover['vw_macd_line'],
-                $crossover['vw_signal_line'],
-                $crossover['vw_histogram'],
+                $crossover['macd_line'],
+                $crossover['signal_line'],
+                $crossover['histogram'],
                 number_format($crossover['ema_15'], 8),
                 number_format($crossover['ema_25'], 8),
                 number_format($crossover['ema_50'], 8),
@@ -138,12 +138,12 @@ class CrossoversAlert extends Command
         $rsi = $data->meta->get('rsi');
 
         // Bullish Trend: VW-MACD Line > Signal Line + RSI < 30 (oversold)
-        if ($vwMacdLine > $vwSignalLine && $vwHistogram > 0 && $rsi < 30) {
+        if ($vwMacdLine > $vwSignalLine && $vwHistogram > 0) {
             return 'bullish';
         }
 
         // Bearish Trend: VW-MACD Line < Signal Line + RSI > 70 (overbought)
-        if ($vwMacdLine < $vwSignalLine && $vwHistogram < 0 && $rsi > 70) {
+        if ($vwMacdLine < $vwSignalLine && $vwHistogram < 0) {
             return 'bearish';
         }
 
