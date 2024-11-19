@@ -10,6 +10,5 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(FetchCryptos::class)->daily();
-Schedule::command(FetchVolumes::class)->everyMinute();
 Schedule::command(EmasAlert::class)->everyMinute();
 Schedule::command(VolumesAlert::class)->everyMinute();
