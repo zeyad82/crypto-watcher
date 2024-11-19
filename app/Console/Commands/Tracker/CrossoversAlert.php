@@ -125,9 +125,9 @@ class CrossoversAlert extends Command
     {
         $normalizedAtr = ($data->meta->get('atr') / $data->latest_price) * 100; // Calculate ATR as a percentage of price
 
-        // if ($normalizedAtr < 3) {
-        //     return 'neutral';
-        // }
+        if ($normalizedAtr < 3) {
+            return 'neutral';
+        }
 
         // Retrieve VW-MACD data
         $vwMacdLine   = $data->meta->get('vw_macd_line');
@@ -138,12 +138,12 @@ class CrossoversAlert extends Command
         $rsi = $data->meta->get('rsi');
 
         // Bullish Trend: VW-MACD Line > Signal Line + RSI < 30 (oversold)
-        if ($vwMacdLine > $vwSignalLine && $vwHistogram > 0) {
+        if ($vwMacdLine > $vwSignalLine && $vwHistogram > 0 && $rsi < 50) {
             return 'bullish';
         }
 
         // Bearish Trend: VW-MACD Line < Signal Line + RSI > 70 (overbought)
-        if ($vwMacdLine < $vwSignalLine && $vwHistogram < 0) {
+        if ($vwMacdLine < $vwSignalLine && $vwHistogram < 0 && $rsi > 55) {
             return 'bearish';
         }
 

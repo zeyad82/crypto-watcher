@@ -44,7 +44,7 @@ class AlertPerformance extends Command
 
                 $data[] = [
                     'Symbol'       => $crypto->symbol,
-                    'Signals'      => $crypto->alerts->count(),
+                    'Signals'      => $totalAlerts,
                     'TP1 (%)'      => number_format(($tp1Hits / $totalAlerts) * 100, 2),
                     'TP2 (%)'      => number_format(($tp2Hits / $totalAlerts) * 100, 2),
                     'TP3 (%)'      => number_format(($tp3Hits / $totalAlerts) * 100, 2),
@@ -61,7 +61,7 @@ class AlertPerformance extends Command
 
         // Display the data in a table format
         $this->table(
-            ['Symbol', 'TP1 (%)', 'TP2 (%)', 'TP3 (%)', 'SL (%)', 'Winning Rate'],
+            ['Symbol', 'Signals', 'TP1 (%)', 'TP2 (%)', 'TP3 (%)', 'SL (%)', 'Winning Rate'],
             $data
         );
     }
