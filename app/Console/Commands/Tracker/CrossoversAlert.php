@@ -114,44 +114,40 @@ class CrossoversAlert extends Command
     }
 
     /**
-     * Determine the current trend based on EMA values.
-     *
-     * @param VolumeData $data
-     * @return string 'bullish', 'bearish', or 'neutral'
-     */
+    * Determine the current trend based on Volume-Weighted MACD, RSI, and ATR values.
+    *
+    * @param VolumeData $data
+    * @return string 'bullish', 'bearish', or 'neutral'
+    */
     protected function determineTrend(VolumeData $data): string
     {
         $normalizedAtr = ($data->meta->get('atr') / $data->latest_price) * 100; // Calculate ATR as a percentage of price
 
-        if($normalizedAtr < 3) {
+        if ($normalizedAtr < 3) {
             return 'neutral';
         }
 
-        $macdLine = $data->meta->get('macd_line');
-        $signalLine = $data->meta->get('signal_line');
-        $histogram = $data->meta->get('histogram');
+        // Retrieve VW-MACD data
+        $vwMacdLine   = $data->meta->get('vw_macd_line');
+        $vwSignalLine = $data->meta->get('vw_signal_line');
+        $vwHistogram  = $data->meta->get('vw_histogram');
 
-        // Bullish Trend: MACD Line is above Signal Line and Histogram is growing
-        if ($macdLine > $signalLine && $histogram > 0) {
+        // Retrieve RSI
+        $rsi = $data->meta->get('rsi');
+
+        // Bullish Trend: VW-MACD Line > Signal Line + RSI < 30 (oversold)
+        if ($vwMacdLine > $vwSignalLine && $vwHistogram > 0 && $rsi < 30) {
             return 'bullish';
         }
 
-        // Bearish Trend: MACD Line is below Signal Line and Histogram is growing
-        if ($macdLine < $signalLine && $histogram < 0) {
+        // Bearish Trend: VW-MACD Line < Signal Line + RSI > 70 (overbought)
+        if ($vwMacdLine < $vwSignalLine && $vwHistogram < 0 && $rsi > 70) {
             return 'bearish';
         }
 
-
-        // if ($data->price_ema_15 > $data->price_ema_25 && $data->price_ema_25 > $data->price_ema_50) {
-        //     return 'bullish';
-        // }
-
-        // if ($data->price_ema_15 < $data->price_ema_25 && $data->price_ema_25 < $data->price_ema_50) {
-        //     return 'bearish';
-        // }
-
         return 'neutral';
     }
+
 
     /**
      * Send a message to Telegram.

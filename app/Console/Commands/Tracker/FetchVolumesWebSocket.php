@@ -54,7 +54,7 @@ class FetchVolumesWebSocket extends Command
 
     protected function processKlineData(array $data)
     {
-        $symbol = strtoupper(explode('@', $data['s'])[0]); // Extract symbol from WebSocket data
+        $symbol = strtoupper(explode('@', $data['s'])[0]);
 
         $crypto = Crypto::where('base_asset', str_replace('USDT', '', $symbol))->first();
 
@@ -78,16 +78,12 @@ class FetchVolumesWebSocket extends Command
             ->get();
 
         $closePrices = $recentData->pluck('close')->toArray();
-        $highs       = $recentData->pluck('high')->toArray();
-        $lows        = $recentData->pluck('low')->toArray();
         $volumes     = $recentData->pluck('last_volume')->toArray();
 
         $closePrices[] = $close;
-        $highs[]       = $high;
-        $lows[]        = $low;
         $volumes[]     = $volume;
 
-        $macdData = Calculate::MACD($closePrices);
+        $vwMacdData = Calculate::VW_MACD($closePrices, $volumes);
 
         VolumeData::updateOrCreate(
             [
@@ -108,10 +104,10 @@ class FetchVolumesWebSocket extends Command
                 'price_ema_25' => Calculate::EMA($closePrices, 25),
                 'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
-                    'atr'         => Calculate::ATR($highs, $lows, $closePrices),
-                    'macd_line'   => $macdData['macd_line'],
-                    'signal_line' => $macdData['signal_line'],
-                    'histogram'   => $macdData['histogram'],
+                    'vw_macd_line'   => $vwMacdData['macd_line'],
+                    'vw_signal_line' => $vwMacdData['signal_line'],
+                    'vw_histogram'   => $vwMacdData['histogram'],
+                    'rsi'            => Calculate::RSI($closePrices),
                 ],
             ]
         );
