@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Tracker;
 
+use App\Models\Alert;
 use App\Models\Crypto;
 use App\Models\VolumeData;
 use GuzzleHttp\Client;
@@ -52,9 +53,9 @@ class EmasAlert extends Command
 
             // Check if the trend has changed
             if ($currentTrend !== $previousTrend && $currentTrend != 'neutral') {
-                $newCrossovers[] = [
+                $crossover = [
                     'crypto'         => $crypto,
-                    'current_trend'  => $currentTrend,
+                    'trend'  => $currentTrend,
                     'previous_trend' => $previousTrend,
                     'ema_15' => $data->price_ema_15,
                     'ema_25' => $data->price_ema_25,
@@ -64,10 +65,19 @@ class EmasAlert extends Command
                     'atr'       => $data->meta->get('atr'),
                     'macd_line' => $data->meta->get('macd_line'),
                     'signal_line' => $data->meta->get('signal_line'),
-                    'histogram' => $data->meta->get('histogram')
+                    'histogram' => $data->meta->get('histogram'),
+                    'entry'          => $data->latest_price,
+                    'stop_loss'      => $data->latest_price - (1.5 * $data->meta->get('atr')),
+                    'tp1'            => $data->latest_price + (1 * $data->meta->get('atr')),
+                    'tp2'            => $data->latest_price + (2 * $data->meta->get('atr')),
+                    'tp3'            => $data->latest_price + (3 * $data->meta->get('atr')),
                 ];
 
-                Log::info('crossover', $newCrossovers + ['strong' => $data->meta->get('atr') > 0.5, 'atr ' => $data->meta->get('atr')]);
+                $newCrossovers[] = $crossover;
+
+                Alert::create([
+                    'crypto_id' => $data->crypto_id,
+                ] + $crossover);
             }
         }
 
@@ -79,7 +89,7 @@ class EmasAlert extends Command
         // Send the alerts to Telegram
         $message = "*New Alerts* 📈📉\n";
         foreach ($newCrossovers as $crossover) {
-            $trend = strtoupper($crossover['current_trend']);
+            $trend = strtoupper($crossover['trend']);
             $message .= sprintf(
                 "\n*#%s*\nNew Trend: %s (Previous: %s)\nMACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\nEMA15: %s\nEMA25: %s\nEMA50: %s\nATR: %s\nPrice: %s USDT\nTime: %s\n",
                 $crossover['crypto']->symbol,
@@ -110,7 +120,9 @@ class EmasAlert extends Command
      */
     protected function determineTrend(VolumeData $data): string
     {
-        if($data->meta->get('atr') < 0.5) {
+        $normalizedAtr = ($data->meta->get('atr') / $data->latest_price) * 100; // Calculate ATR as a percentage of price
+
+        if($normalizedAtr < 3) {
             return 'neutral';
         }
 

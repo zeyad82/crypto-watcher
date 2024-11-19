@@ -16,6 +16,11 @@ class Crypto extends Model
         return $this->hasMany(VolumeData::class);
     }
 
+    public function alerts()
+    {
+        return $this->hasMany(Alert::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

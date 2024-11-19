@@ -52,7 +52,7 @@ class VolumesAlert extends Command
             $isSpike = $data->last_volume > ($data->vma_15 * 2);
             $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
 
-            if (! $isSpike || $amplitudePercent < 4) {
+            if (! $isSpike || $amplitudePercent < 3) {
                 continue;
             }
 
