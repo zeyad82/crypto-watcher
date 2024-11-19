@@ -8,7 +8,9 @@
         "php": "^8.2",
         "ccxt/ccxt": "^1.53",
         "laravel/framework": "^11.9",
-        "laravel/tinker": "^2.9"
+        "laravel/tinker": "^2.9",
+        "ratchet/pawl": "^0.4.1",
+        "react/event-loop": "^1.5"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.2",
