@@ -4,6 +4,7 @@ namespace App\Console\Commands\Tracker;
 
 use App\Models\Crypto;
 use App\Models\VolumeData;
+use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 
@@ -85,7 +86,7 @@ class VolumesAlert extends Command
                 number_format($spike['amplitude'], 2),
                 number_format($spike['vma_15'], 2),
                 number_format($spike['price'], 8),
-                $spike['timestamp']
+                Carbon::parse($spike['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s') // Convert timestamp to SA timezone
             );
         }
 

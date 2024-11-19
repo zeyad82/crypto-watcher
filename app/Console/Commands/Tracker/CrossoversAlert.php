@@ -5,6 +5,7 @@ namespace App\Console\Commands\Tracker;
 use App\Models\Alert;
 use App\Models\Crypto;
 use App\Models\VolumeData;
+use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -82,7 +83,7 @@ class CrossoversAlert extends Command
         }
 
         if (empty($newCrossovers)) {
-            $this->info('No new EMA crossovers detected.');
+            $this->info('No new crossovers detected.');
             return 0;
         }
 
@@ -103,12 +104,12 @@ class CrossoversAlert extends Command
                 number_format($crossover['ema_50'], 8),
                 $crossover['atr'],
                 number_format($crossover['price'], 8),
-                $crossover['timestamp']
+                Carbon::parse($crossover['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s') // Convert timestamp to SA timezone
             );
         }
 
         $this->sendToTelegram($message);
-        $this->info('New EMA crossover alerts sent to Telegram.');
+        $this->info('New crossover alerts sent to Telegram.');
         return 0;
     }
 
