@@ -79,7 +79,11 @@ class FetchVolumesWebSocket extends Command
 
         $closePrices = $recentData->pluck('close')->toArray();
         $volumes     = $recentData->pluck('last_volume')->toArray();
+        $highs       = $recentData->pluck('high')->toArray();
+        $lows        = $recentData->pluck('low')->toArray();
 
+        $highs[]       = $high;
+        $lows[]        = $low;
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
@@ -104,6 +108,7 @@ class FetchVolumesWebSocket extends Command
                 'price_ema_25' => Calculate::EMA($closePrices, 25),
                 'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
+                    'atr'            => Calculate::ATR($highs, $lows, $closePrices),
                     'vw_macd_line'   => $vwMacdData['macd_line'],
                     'vw_signal_line' => $vwMacdData['signal_line'],
                     'vw_histogram'   => $vwMacdData['histogram'],
