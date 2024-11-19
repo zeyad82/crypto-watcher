@@ -9,10 +9,10 @@ use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
-class EmasAlert extends Command
+class CrossoversAlert extends Command
 {
-    protected $signature   = 'tracker:emas-alert';
-    protected $description = 'Track new EMA crossovers and send alerts to Telegram.';
+    protected $signature   = 'tracker:crossovers-alert';
+    protected $description = 'Track new crossovers and send alerts to Telegram.';
     protected $telegramBotToken;
     protected $telegramChatId;
     protected $httpClient;

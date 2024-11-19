@@ -44,7 +44,7 @@ class VolumesAlert extends Command
             $crypto = $data->crypto;
 
             // Check if a recent alert was already sent
-            if ($crypto->last_volume_alert && $crypto->last_volume_alert->greaterThanOrEqualTo(now()->subMinutes(20))) {
+            if ($crypto->last_volume_alert && $crypto->last_volume_alert->equalTo($data->timestamp)) {
                 continue; // Skip if an alert was sent within the last 10 minutes
             }
 
@@ -67,7 +67,7 @@ class VolumesAlert extends Command
             ];
 
             // Update the last_volume_alert timestamp
-            $crypto->update(['last_volume_alert' => now()]);
+            $crypto->update(['last_volume_alert' => $data->timestamp]);
         }
 
         if (empty($newSpikes)) {

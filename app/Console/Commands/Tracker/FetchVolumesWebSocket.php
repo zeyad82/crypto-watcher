@@ -4,6 +4,7 @@ namespace App\Console\Commands\Tracker;
 
 use App\Models\Crypto;
 use App\Models\VolumeData;
+use App\Services\Calculate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Ratchet\Client\Connector;
@@ -21,7 +22,9 @@ class FetchVolumesWebSocket extends Command
         $connector = new Connector($loop);
 
         $cryptoSymbols = Crypto::pluck('symbol')->toArray();
-        $streams       = implode('/', array_map(fn($symbol) => strtolower($symbol) . '@kline_15m', $cryptoSymbols));
+
+        $streams       = implode('/', array_map(fn($symbol) => str_replace('/', '', strtolower($symbol)) . '@kline_15m', $cryptoSymbols));
+
         $url           = "wss://stream.binance.com:9443/stream?streams=$streams";
 
         $connector($url)->then(
@@ -52,7 +55,8 @@ class FetchVolumesWebSocket extends Command
     protected function processKlineData(array $data)
     {
         $symbol = strtoupper(explode('@', $data['s'])[0]); // Extract symbol from WebSocket data
-        $crypto = Crypto::where('symbol', $symbol)->first();
+
+        $crypto = Crypto::where('base_asset', str_replace('USDT', '', $symbol))->first();
 
         if (!$crypto) {
             $this->warn("Crypto not found: $symbol");
@@ -83,11 +87,7 @@ class FetchVolumesWebSocket extends Command
         $lows[]        = $low;
         $volumes[]     = $volume;
 
-        $ema15    = $this->calculateEMA($closePrices, 15);
-        $ema25    = $this->calculateEMA($closePrices, 25);
-        $ema50    = $this->calculateEMA($closePrices, 50);
-        $atr      = $this->calculateATR($highs, $lows, $closePrices);
-        $macdData = $this->calculateMACD($closePrices);
+        $macdData = Calculate::MACD($closePrices);
 
         VolumeData::updateOrCreate(
             [
@@ -101,14 +101,14 @@ class FetchVolumesWebSocket extends Command
                 'close'        => $close,
                 'last_volume'  => $volume,
                 'latest_price' => $close,
-                'vma_15'       => $this->calculateMA($volumes, 15),
-                'vma_25'       => $this->calculateMA($volumes, 25),
-                'vma_50'       => $this->calculateMA($volumes, 50),
-                'price_ema_15' => $ema15,
-                'price_ema_25' => $ema25,
-                'price_ema_50' => $ema50,
+                'vma_15'       => Calculate::MA($volumes, 15),
+                'vma_25'       => Calculate::MA($volumes, 25),
+                'vma_50'       => Calculate::MA($volumes, 50),
+                'price_ema_15' => Calculate::EMA($closePrices, 15),
+                'price_ema_25' => Calculate::EMA($closePrices, 25),
+                'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
-                    'atr'         => $atr,
+                    'atr'         => Calculate::ATR($highs, $lows, $closePrices),
                     'macd_line'   => $macdData['macd_line'],
                     'signal_line' => $macdData['signal_line'],
                     'histogram'   => $macdData['histogram'],
@@ -117,73 +117,5 @@ class FetchVolumesWebSocket extends Command
         );
 
         $this->info("Processed kline for {$crypto->symbol} at {$timestamp}");
-    }
-
-    protected function calculateEMA(array $values, int $period): float
-    {
-        $k   = 2 / ($period + 1);
-        $ema = $values[0];
-
-        foreach ($values as $index => $value) {
-            if ($index === 0) {
-                continue;
-            }
-            $ema = ($value * $k) + ($ema * (1 - $k));
-        }
-
-        return $ema;
-    }
-
-    protected function calculateMA(array $data, int $period): float
-    {
-        if (count($data) < $period) {
-            return 0;
-        }
-
-        $subset = array_slice($data, -$period);
-        return array_sum($subset) / $period;
-    }
-
-    protected function calculateATR(array $highs, array $lows, array $closes, int $period = 14): float
-    {
-        $tr = [];
-        for ($i = 1; $i < count($highs); $i++) {
-            $tr[] = max(
-                $highs[$i] - $lows[$i],
-                abs($highs[$i] - $closes[$i - 1]),
-                abs($lows[$i] - $closes[$i - 1])
-            );
-        }
-
-        return array_sum(array_slice($tr, -$period)) / $period;
-    }
-
-    protected function calculateMACD(array $closingPrices): array
-    {
-        $ema12 = $this->calculateEMAs($closingPrices, 12);
-        $ema26 = $this->calculateEMAs($closingPrices, 26);
-
-        $macdLine   = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
-        $signalLine = $this->calculateEMAs($macdLine, 9);
-        $histogram  = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
-
-        return [
-            'macd_line'   => end($macdLine),
-            'signal_line' => end($signalLine),
-            'histogram'   => end($histogram),
-        ];
-    }
-
-    protected function calculateEMAs(array $values, int $period): array
-    {
-        $k      = 2 / ($period + 1);
-        $ema    = [];
-        $ema[0] = $values[0];
-
-        for ($i = 1; $i < count($values); $i++) {
-            $ema[$i] = ($values[$i] * $k) + ($ema[$i - 1] * (1 - $k));
-        }
-
-        return $ema;
     }
 }

@@ -29,8 +29,8 @@ class Crypto extends Model
     protected function casts(): array
     {
         return [
-            'last_volume_alert' => 'date',
-            'last_volume_alert' => 'date',
+            'last_fetched'      => 'date:Y-m-d H:i:s',
+            'last_volume_alert' => 'date:Y-m-d H:i:s',
         ];
     }
 
