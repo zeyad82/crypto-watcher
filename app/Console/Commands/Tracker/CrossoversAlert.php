@@ -67,6 +67,7 @@ class CrossoversAlert extends Command
                     'macd_line' => $data->meta->get('macd_line'),
                     'signal_line' => $data->meta->get('signal_line'),
                     'histogram' => $data->meta->get('histogram'),
+                    'rsi' => $data->meta->get('rsi'),
                     'entry'          => $data->latest_price,
                     'stop_loss'      => $data->latest_price - (1.5 * $data->meta->get('atr')),
                     'tp1'            => $data->latest_price + (1 * $data->meta->get('atr')),
@@ -92,19 +93,20 @@ class CrossoversAlert extends Command
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['trend']);
             $message .= sprintf(
-                "\n*#%s*\nNew Trend: %s (Previous: %s)\nMACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\nEMA15: %s\nEMA25: %s\nEMA50: %s\nATR: %s\nPrice: %s USDT\nTime: %s\n",
+                "\n*#%s*\nNew Trend: %s (Previous: %s)\nMACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\nEMA15: %s\nEMA25: %s\nEMA50: %s\nATR: %s\nRSI: %s\nPrice: %s USDT\nTime: %s\n",
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
-                $crossover['macd_line'],
-                $crossover['signal_line'],
-                $crossover['histogram'],
+                $crossover['vw_macd_line'],
+                $crossover['vw_signal_line'],
+                $crossover['vw_histogram'],
                 number_format($crossover['ema_15'], 8),
                 number_format($crossover['ema_25'], 8),
                 number_format($crossover['ema_50'], 8),
                 $crossover['atr'],
+                $crossover['rsi'],
                 number_format($crossover['price'], 8),
-                Carbon::parse($crossover['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s') // Convert timestamp to SA timezone
+                Carbon::parse($crossover['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s')
             );
         }
 
@@ -123,9 +125,9 @@ class CrossoversAlert extends Command
     {
         $normalizedAtr = ($data->meta->get('atr') / $data->latest_price) * 100; // Calculate ATR as a percentage of price
 
-        if ($normalizedAtr < 3) {
-            return 'neutral';
-        }
+        // if ($normalizedAtr < 3) {
+        //     return 'neutral';
+        // }
 
         // Retrieve VW-MACD data
         $vwMacdLine   = $data->meta->get('vw_macd_line');

@@ -84,7 +84,6 @@ class UpdateAlertResults extends Command
      */
     protected function getCurrentPrice(string $symbol): ?float
     {
-        $tickerKey = strtoupper($symbol) . '/USDT'; // Format for Binance tickers
-        return self::$tickers[$tickerKey]['last'] ?? null;
+        return self::$tickers[$symbol]['last'] ?? null;
     }
 }
