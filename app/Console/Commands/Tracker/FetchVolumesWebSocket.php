@@ -89,6 +89,9 @@ class FetchVolumesWebSocket extends Command
 
         $vwMacdData = Calculate::VW_MACD($closePrices, $volumes);
 
+        // Fetch the most recent histogram if it exists
+        $previousHistogram = $recentData->first()?->meta['vw_histogram'] ?? 0;
+
         VolumeData::updateOrCreate(
             [
                 'crypto_id' => $crypto->id,
@@ -112,6 +115,7 @@ class FetchVolumesWebSocket extends Command
                     'vw_macd_line'   => $vwMacdData['macd_line'],
                     'vw_signal_line' => $vwMacdData['signal_line'],
                     'vw_histogram'   => $vwMacdData['histogram'],
+                    'previous_histogram' => $previousHistogram,
                     'rsi'            => Calculate::RSI($closePrices),
                 ],
             ]

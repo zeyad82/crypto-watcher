@@ -69,11 +69,7 @@ class CrossoversAlert extends Command
                     'histogram' => $data->meta->get('vw_histogram'),
                     'rsi' => $data->meta->get('rsi'),
                     'entry'          => $data->latest_price,
-                    'stop_loss'      => ($data->latest_price - (1.5 * $data->meta->get('atr'))),
-                    'tp1'            => ($data->latest_price + (1 * $data->meta->get('atr'))),
-                    'tp2'            => ($data->latest_price + (2 * $data->meta->get('atr'))),
-                    'tp3'            => ($data->latest_price + (3 * $data->meta->get('atr'))),
-                ];
+                ] + $this->setup($data, $currentTrend);
 
                 $newCrossovers[] = $crossover;
 
@@ -133,17 +129,22 @@ class CrossoversAlert extends Command
         $vwMacdLine   = $data->meta->get('vw_macd_line');
         $vwSignalLine = $data->meta->get('vw_signal_line');
         $vwHistogram  = $data->meta->get('vw_histogram');
+        $previousHistogram = $data->meta->get('previous_histogram');
 
         // Retrieve RSI
         $rsi = $data->meta->get('rsi');
 
+        // Histogram Momentum: Looking for growing positive or negative momentum
+        $momentumUp   = $vwHistogram > 0 && $vwHistogram > $previousHistogram;
+        $momentumDown = $vwHistogram < 0 && $vwHistogram < $previousHistogram;
+
         // Bullish Trend: VW-MACD Line > Signal Line + RSI < 30 (oversold)
-        if ($vwMacdLine > $vwSignalLine && $vwHistogram > 0 && $rsi < 50) {
+        if ($vwMacdLine > $vwSignalLine && $momentumUp && $rsi < 45) {
             return 'bullish';
         }
 
         // Bearish Trend: VW-MACD Line < Signal Line + RSI > 70 (overbought)
-        if ($vwMacdLine < $vwSignalLine && $vwHistogram < 0 && $rsi > 55) {
+        if ($vwMacdLine < $vwSignalLine && $momentumDown && $rsi > 55) {
             return 'bearish';
         }
 
@@ -196,4 +197,22 @@ class CrossoversAlert extends Command
         }
     }
 
+    protected function setup($data, $trend)
+    {
+        if($trend == 'bullish') {
+            return [
+                'stop_loss'      => $data->latest_price - (1.5 * $data->meta->get('atr')),
+                'tp1'            => $data->latest_price + (1 * $data->meta->get('atr')),
+                'tp2'            => $data->latest_price + (2 * $data->meta->get('atr')),
+                'tp3'            => $data->latest_price + (3 * $data->meta->get('atr')),
+            ];
+        } else {
+            return [
+                'stop_loss'      => $data->latest_price + (1.5 * $data->meta->get('atr')),
+                'tp1'            => $data->latest_price - (1 * $data->meta->get('atr')),
+                'tp2'            => $data->latest_price - (2 * $data->meta->get('atr')),
+                'tp3'            => $data->latest_price - (3 * $data->meta->get('atr')),
+            ];
+        }
+    }
 }
