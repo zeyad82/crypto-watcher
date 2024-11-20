@@ -86,15 +86,14 @@ class CrossoversAlert extends Command
         }
 
         // Send the alerts to Telegram
-        $message = "*New Alerts* 📈📉\n";
+        $message = "*New Alert* 📈📉\n\n";
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['trend']);
             $message .= sprintf(
-                "*New Alert* 📈📉\n\n"
-                . "*#%s*\nNew Trend: %s (Previous: %s)\n\n"
+                "*#%s*\nNew Trend: %s (Previous: %s)\n\n"
                 . "MACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\n\n"
                 . "EMA15: %s\nEMA25: %s\nEMA50: %s\n\n"
-                . "ATR: %s%\nRSI: %s\n\n"
+                . "ATR: %s%%\nRSI: %s\n\n"
                 . "Price: %s USDT\nTP1: %s\nTP2: %s\nTP3: %s\nSL: %s\n\n"
                 . "Time: %s\n\n"
                 . "Performance Report:\n%s",
@@ -107,13 +106,13 @@ class CrossoversAlert extends Command
                 round($crossover['ema_15'], 8),
                 round($crossover['ema_25'], 8),
                 round($crossover['ema_50'], 8),
-                $crossover['atr'],
-                $crossover['rsi'],
+                round($crossover['atr'], 2),
+                round($crossover['rsi'], 2),
                 round($crossover['price'], 8),
-                $crossover['tp1'],
-                $crossover['tp2'],
-                $crossover['tp3'],
-                $crossover['stop_loss'],
+                round($crossover['tp1'], 8),
+                round($crossover['tp2'], 8),
+                round($crossover['tp3'], 8),
+                round($crossover['stop_loss'], 8),
                 Carbon::parse($crossover['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s'),
                 $this->generatePerformanceReport($crossover['crypto'])
             );
