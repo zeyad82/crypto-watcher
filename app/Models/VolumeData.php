@@ -43,4 +43,9 @@ class VolumeData extends Model
             'meta' => 'collection',
         ];
     }
+
+    public function getNormalizedAtr()
+    {
+        return ($this->meta->get('atr') / $this->latest_price) * 100;
+    }
 }

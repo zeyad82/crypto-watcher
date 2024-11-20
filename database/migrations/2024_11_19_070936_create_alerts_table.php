@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('alerts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('crypto_id')->constrained('cryptos')->onDelete('cascade'); // Foreign key to cryptos table
+            $table->foreignId('volume_id')->constrained('volume_data')->onDelete('cascade'); // Foreign key to cryptos table
             $table->string('trend');
             $table->string('previous_trend')->nullable();
             $table->decimal('entry', 20, 8);

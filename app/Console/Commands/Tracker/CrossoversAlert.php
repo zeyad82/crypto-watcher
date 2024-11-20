@@ -32,7 +32,7 @@ class CrossoversAlert extends Command
         $this->info('Tracking new EMA crossovers...');
 
         // Fetch recent EMA data
-        $recentData = VolumeData::with('crypto')
+        $recentData = VolumeData::with('crypto.alerts')
         ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
         ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
         ->get();
@@ -63,7 +63,7 @@ class CrossoversAlert extends Command
                     'ema_50' => $data->price_ema_50,
                     'price' => $data->close,
                     'timestamp' => $data->timestamp,
-                    'atr'       => $data->meta->get('atr'),
+                    'atr'       => $data->getNormalizedAtr(),
                     'macd_line' => $data->meta->get('vw_macd_line'),
                     'signal_line' => $data->meta->get('vw_signal_line'),
                     'histogram' => $data->meta->get('vw_histogram'),
@@ -75,6 +75,7 @@ class CrossoversAlert extends Command
 
                 Alert::create([
                     'crypto_id' => $data->crypto_id,
+                    'volume_id' => $data->id,
                 ] + $crossover);
             }
         }
@@ -89,20 +90,32 @@ class CrossoversAlert extends Command
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['trend']);
             $message .= sprintf(
-                "\n*#%s*\nNew Trend: %s (Previous: %s)\nMACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\nEMA15: %s\nEMA25: %s\nEMA50: %s\nATR: %s\nRSI: %s\nPrice: %s USDT\nTime: %s\n",
+                "*New Alert* 📈📉\n\n"
+                . "*#%s*\nNew Trend: %s (Previous: %s)\n\n"
+                . "MACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\n\n"
+                . "EMA15: %s\nEMA25: %s\nEMA50: %s\n\n"
+                . "ATR: %s%\nRSI: %s\n\n"
+                . "Price: %s USDT\nTP1: %s\nTP2: %s\nTP3: %s\nSL: %s\n\n"
+                . "Time: %s\n\n"
+                . "Performance Report:\n%s",
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
-                $crossover['macd_line'],
-                $crossover['signal_line'],
-                $crossover['histogram'],
-                number_format($crossover['ema_15'], 8),
-                number_format($crossover['ema_25'], 8),
-                number_format($crossover['ema_50'], 8),
+                round($crossover['macd_line'], 5),
+                round($crossover['signal_line'], 5),
+                round($crossover['histogram'], 5),
+                round($crossover['ema_15'], 8),
+                round($crossover['ema_25'], 8),
+                round($crossover['ema_50'], 8),
                 $crossover['atr'],
                 $crossover['rsi'],
-                number_format($crossover['price'], 8),
-                Carbon::parse($crossover['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s')
+                round($crossover['price'], 8),
+                $crossover['tp1'],
+                $crossover['tp2'],
+                $crossover['tp3'],
+                $crossover['stop_loss'],
+                Carbon::parse($crossover['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s'),
+                $this->generatePerformanceReport($crossover['crypto'])
             );
         }
 
@@ -119,7 +132,7 @@ class CrossoversAlert extends Command
     */
     protected function determineTrend(VolumeData $data): string
     {
-        $normalizedAtr = ($data->meta->get('atr') / $data->latest_price) * 100; // Calculate ATR as a percentage of price
+        $normalizedAtr = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
 
         if ($normalizedAtr < 3) {
             return 'neutral';
@@ -151,6 +164,35 @@ class CrossoversAlert extends Command
         return 'neutral';
     }
 
+    protected function generatePerformanceReport($crypto)
+    {
+        $alerts = $crypto->alerts;
+
+        if ($alerts->isEmpty()) {
+            return "No past performance data available.";
+        }
+
+        $wins   = $alerts->whereIn('result', [1, 2, 3])->count();
+        $losses = $alerts->where('result', -1)->count();
+        $total  = $alerts->count();
+
+        $tp1Hits = $alerts->where('result', 1)->count();
+        $tp2Hits = $alerts->where('result', 2)->count();
+        $tp3Hits = $alerts->where('result', 3)->count();
+
+        $winRate = $total > 0 ? round(($wins / $total) * 100, 2) : 0;
+
+        return sprintf(
+            "Total Signals: %d\nWins: %d\nLosses: %d\nWin Rate: %s%%\n\nTP1 Hits: %d\nTP2 Hits: %d\nTP3 Hits: %d",
+            $total,
+            $wins,
+            $losses,
+            $winRate,
+            $tp1Hits,
+            $tp2Hits,
+            $tp3Hits
+        );
+    }
 
     /**
      * Send a message to Telegram.
