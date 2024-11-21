@@ -72,9 +72,9 @@ class CrossoversAlert extends Command
                     'price' => $data->close,
                     'timestamp' => $data->timestamp,
                     'atr'       => $data->getNormalizedAtr(),
-                    'macd_line' => $data->meta->get('vw_macd_line'),
-                    'signal_line' => $data->meta->get('vw_signal_line'),
-                    'histogram' => $data->meta->get('vw_histogram'),
+                    'macd_line' => $data->meta->get('macd_line'),
+                    'signal_line' => $data->meta->get('signal_line'),
+                    'histogram' => $data->meta->get('histogram'),
                     'rsi' => $data->meta->get('rsi'),
                     'entry'          => $data->latest_price,
                 ] + $this->setup($data, $currentTrend);
@@ -148,25 +148,25 @@ class CrossoversAlert extends Command
         }
 
         // Retrieve VW-MACD data
-        $vwMacdLine   = $data->meta->get('vw_macd_line');
-        $vwSignalLine = $data->meta->get('vw_signal_line');
-        $vwHistogram  = $data->meta->get('vw_histogram');
+        $macdLine   = $data->meta->get('macd_line');
+        $signalLine = $data->meta->get('signal_line');
+        $histogram  = $data->meta->get('histogram');
         $previousHistogram = $data->meta->get('previous_histogram');
 
         // Retrieve RSI
         $rsi = $data->meta->get('rsi');
 
         // Histogram Momentum: Looking for growing positive or negative momentum
-        $momentumUp   = $vwHistogram > 0 && $vwHistogram > $previousHistogram;
-        $momentumDown = $vwHistogram < 0 && $vwHistogram < $previousHistogram;
+        $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
+        $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
         // Bullish Trend: VW-MACD Line > Signal Line + RSI < 30 (oversold)
-        if ($vwMacdLine > $vwSignalLine && $momentumUp && $rsi < 55) {
+        if ($macdLine > $signalLine && $momentumUp && $rsi < 55) {
             return 'bullish';
         }
 
         // Bearish Trend: VW-MACD Line < Signal Line + RSI > 70 (overbought)
-        if ($vwMacdLine < $vwSignalLine && $momentumDown && $rsi > 45) {
+        if ($macdLine < $signalLine && $momentumDown && $rsi > 45) {
             return 'bearish';
         }
 

@@ -104,9 +104,10 @@ class FetchVolumesWebSocket extends Command
         $volume    = $kline['v'];
 
         $recentData = VolumeData::where('crypto_id', $crypto->id)
-            ->orderBy('timestamp', 'asc')
+            ->orderBy('timestamp', 'desc')
             ->take(119)
-            ->get();
+            ->get()->reverse()->values();
+
 
         $closePrices = $recentData->pluck('close')->toArray();
         $volumes     = $recentData->pluck('last_volume')->toArray();
@@ -118,7 +119,7 @@ class FetchVolumesWebSocket extends Command
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
-        $vwMacd15mData = Calculate::VW_MACD($closePrices, $volumes);
+        $macd15mData = Calculate::MACD($closePrices, $volumes);
 
         $previousHistogram = $recentData->last()?->meta['vw_histogram'] ?? 0;
 
@@ -129,7 +130,7 @@ class FetchVolumesWebSocket extends Command
         $aggregatedClosePrices = array_map(fn($chunk) => array_sum($chunk) / count($chunk), $hourlyClosePrices);
         $aggregatedVolumes     = array_map(fn($chunk) => array_sum($chunk), $hourlyVolumes);
 
-        $vwMacd1hData = Calculate::VW_MACD($aggregatedClosePrices, $aggregatedVolumes);
+        $macd1hData = Calculate::MACD($aggregatedClosePrices, $aggregatedVolumes);
 
         VolumeData::updateOrCreate(
             [
@@ -151,14 +152,14 @@ class FetchVolumesWebSocket extends Command
                 'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
                     'atr'                => Calculate::ATR($highs, $lows, $closePrices),
-                    'vw_macd_line'       => $vwMacd15mData['macd_line'],
-                    'vw_signal_line'     => $vwMacd15mData['signal_line'],
-                    'vw_histogram'       => $vwMacd15mData['histogram'],
+                    'macd_line'       => $macd15mData['macd_line'],
+                    'signal_line'     => $macd15mData['signal_line'],
+                    'histogram'       => $macd15mData['histogram'],
                     'previous_histogram' => $previousHistogram,
                     'rsi'                => Calculate::RSI($closePrices),
-                    '1h_vw_macd_line'    => $vwMacd1hData['macd_line'],
-                    '1h_vw_signal_line'  => $vwMacd1hData['signal_line'],
-                    '1h_vw_histogram'    => $vwMacd1hData['histogram'],
+                    '1h_macd_line'    => $macd1hData['macd_line'],
+                    '1h_signal_line'  => $macd1hData['signal_line'],
+                    '1h_histogram'    => $macd1hData['histogram'],
                 ],
             ]
         );

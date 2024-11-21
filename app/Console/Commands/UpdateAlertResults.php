@@ -40,18 +40,53 @@ class UpdateAlertResults extends Command
             $alert->highest_price = max($alert->highest_price ?? $currentPrice, $currentPrice);
             $alert->lowest_price  = min($alert->lowest_price ?? $currentPrice, $currentPrice);
 
-            // Determine result
-            if ($alert->highest_price >= $alert->tp3) {
-                $alert->update(['result' => 3, 'status' => 'closed']);
-            } elseif ($alert->highest_price >= $alert->tp2) {
-                $alert->update(['result' => 2, 'status' => 'partial']);
-            } elseif ($alert->highest_price >= $alert->tp1) {
-                $alert->update(['result' => 1, 'status' => 'partial']);
-            } elseif ($alert->lowest_price <= $alert->stop_loss) {
-                $alert->update(['result' => -1, 'status' => 'closed']);
-            } else {
-                $alert->save(); // No TP or SL hit; just update prices
+            if($alert->trend = 'bullish') {
+                if ($alert->highest_price >= $alert->tp3) {
+                    $alert->result = 3; 
+                    $alert->status = 'closed';
+                } elseif ($alert->highest_price >= $alert->tp2) {
+                    $alert->result = 2; 
+                    $alert->status = 'partial';
+                } elseif ($alert->highest_price >= $alert->tp1) {
+                    $alert->result = 1; 
+                    $alert->status = 'partial';
+                } elseif ($alert->lowest_price <= $alert->stop_loss) {
+                    if($alert->result === 1) {
+                        $alert->result = -11;
+                    }
+
+                    if($alert->result === 2) {
+                        $alert->result = -2;
+                    }
+
+                    $alert->status = 'closed';
+                }
+            } 
+
+            if ($alert->trend === 'bearish') {
+                if ($alert->lowest_price <= $alert->tp3) {
+                    $alert->result = 3; 
+                    $alert->status = 'closed';
+                } elseif ($alert->lowest_price <= $alert->tp2) {
+                    $alert->result = 2; 
+                    $alert->status = 'partial';
+                } elseif ($alert->lowest_price <= $alert->tp1) {
+                    $alert->result = 1; 
+                    $alert->status = 'partial';
+                } elseif ($alert->highest_price >= $alert->stop_loss) {
+                    if($alert->result === 1) {
+                        $alert->result = -11;
+                    }
+
+                    if($alert->result === 2) {
+                        $alert->result = -2;
+                    }
+
+                    $alert->status = 'closed';
+                }
             }
+
+            $alert->save();
 
             $bar->advance();
         }

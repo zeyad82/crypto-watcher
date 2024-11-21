@@ -10,9 +10,8 @@ class Calculate
             return 0;
         }
 
-        $values = array_slice($values, -$period); // Use only the last $period values
-        $k      = 2 / ($period + 1);
-        $ema    = $values[0];
+        $k = 2 / ($period + 1);
+        $ema = $values[0]; // Initialize with the first value
 
         foreach ($values as $index => $value) {
             if ($index === 0) {
@@ -40,8 +39,8 @@ class Calculate
             return 0;
         }
 
-        $highs  = array_slice($highs, -$period); // Use only the last $period values
-        $lows   = array_slice($lows, -$period);
+        $highs = array_slice($highs, -$period);
+        $lows = array_slice($lows, -$period);
         $closes = array_slice($closes, -($period + 1)); // Need one extra value for True Range calculation
 
         $tr = [];
@@ -58,19 +57,21 @@ class Calculate
 
     public static function MACD(array $closingPrices): array
     {
-        $closingPrices = array_slice($closingPrices, -26); // Use enough data for MACD calculation
+        if (count($closingPrices) < 26) {
+            return ['macd_line' => 0, 'signal_line' => 0, 'histogram' => 0];
+        }
 
-        $ema12 = Self::EMAs($closingPrices, 12);
-        $ema26 = Self::EMAs($closingPrices, 26);
+        $ema12 = self::EMAs($closingPrices, 12);
+        $ema26 = self::EMAs($closingPrices, 26);
 
-        $macdLine   = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
-        $signalLine = Self::EMAs($macdLine, 9);
-        $histogram  = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
+        $macdLine = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
+        $signalLine = self::EMAs($macdLine, 9);
+        $histogram = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
 
         return [
-            'macd_line'   => end($macdLine),
-            'signal_line' => end($signalLine),
-            'histogram'   => end($histogram),
+            'macd_line' => round(end($macdLine), 5),
+            'signal_line' => round(end($signalLine), 5),
+            'histogram' => round(end($histogram), 5),
         ];
     }
 
@@ -80,9 +81,8 @@ class Calculate
             return [];
         }
 
-        $values = array_slice($values, -$period); // Use only the last $period values
-        $k      = 2 / ($period + 1);
-        $ema    = [$values[0]];
+        $k = 2 / ($period + 1);
+        $ema = [$values[0]];
 
         for ($i = 1; $i < count($values); $i++) {
             $ema[$i] = ($values[$i] * $k) + ($ema[$i - 1] * (1 - $k));
@@ -91,82 +91,49 @@ class Calculate
         return $ema;
     }
 
-    public static function VWEMAs(array $prices, array $volumes, int $period): array
-    {
-        if (count($prices) < $period || count($volumes) < $period) {
-            return [];
-        }
-
-        $prices  = array_slice($prices, -$period); // Use only the last $period values
-        $volumes = array_slice($volumes, -$period);
-
-        $k       = 2 / ($period + 1);
-        $vwemas  = [];
-        $weights = array_map(fn($price, $volume) => $volume > 0 ? $price * $volume : 0, $prices, $volumes);
-
-        $vwemas[0] = $volumes[0] > 0 ? $weights[0] / $volumes[0] : $prices[0];
-
-        for ($i = 1; $i < count($prices); $i++) {
-            $currentVolume = $volumes[$i] > 0 ? $volumes[$i] : 1;
-            $currentWeight = $prices[$i] * $currentVolume;
-
-            $vwemas[$i] = ($currentWeight * $k) + ($vwemas[$i - 1] * (1 - $k));
-        }
-
-        return $vwemas;
-    }
-
-    public static function VW_MACD(array $prices, array $volumes): array
-    {
-        $prices  = array_slice($prices, -26); // Use enough data for VW-MACD calculation
-        $volumes = array_slice($volumes, -26);
-
-        $vwema12 = Self::VWEMAs($prices, $volumes, 12);
-        $vwema26 = Self::VWEMAs($prices, $volumes, 26);
-
-        $vwMacdLine = array_map(fn($short, $long) => $short - $long, $vwema12, $vwema26);
-        $signalLine = Self::EMAs($vwMacdLine, 9);
-        $histogram  = array_map(fn($macd, $signal) => $macd - $signal, $vwMacdLine, $signalLine);
-
-        return [
-            'macd_line'   => end($vwMacdLine),
-            'signal_line' => end($signalLine),
-            'histogram'   => end($histogram),
-        ];
-    }
-
     public static function RSI(array $prices, int $period = 14): float
     {
-        if (count($prices) < $period) {
-            return 0;
+        if (count($prices) < $period + 1) {
+            return 0; // Not enough data to calculate RSI
         }
 
-        $prices = array_slice($prices, -($period + 1)); // Use enough data for RSI calculation
+        // Take the last (period + 1) prices for calculation
+        $prices = array_slice($prices, -($period + 1));
 
-        $gains = $losses = [];
+        $gains = [];
+        $losses = [];
 
+        // Calculate gains and losses
         for ($i = 1; $i < count($prices); $i++) {
             $change = $prices[$i] - $prices[$i - 1];
-
             if ($change > 0) {
-                $gains[]  = $change;
+                $gains[] = $change;
                 $losses[] = 0;
             } else {
-                $gains[]  = 0;
+                $gains[] = 0;
                 $losses[] = abs($change);
             }
         }
 
-        $averageGain = array_sum(array_slice($gains, -$period)) / $period;
-        $averageLoss = array_sum(array_slice($losses, -$period)) / $period;
+        // Calculate the first average gain and loss
+        $averageGain = array_sum(array_slice($gains, 0, $period)) / $period;
+        $averageLoss = array_sum(array_slice($losses, 0, $period)) / $period;
 
-        if ($averageLoss == 0) {
-            return 100;
+        // Wilder's Smoothing for gains and losses
+        for ($i = $period; $i < count($gains); $i++) {
+            $averageGain = (($averageGain * ($period - 1)) + $gains[$i]) / $period;
+            $averageLoss = (($averageLoss * ($period - 1)) + $losses[$i]) / $period;
         }
 
-        $rs  = $averageGain / $averageLoss;
+        // Avoid division by zero
+        if ($averageLoss == 0) {
+            return 100; // RSI is 100 if there's no loss
+        }
+
+        // Calculate RSI
+        $rs = $averageGain / $averageLoss;
         $rsi = 100 - (100 / (1 + $rs));
 
-        return $rsi;
+        return round($rsi, 2); // Rounded to match precision
     }
 }
