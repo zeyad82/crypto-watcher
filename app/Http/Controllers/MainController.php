@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\VolumeData;
 use App\Services\Calculate;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 
 class MainController extends Controller
@@ -18,7 +19,7 @@ class MainController extends Controller
 
         $recentData = VolumeData::where('crypto_id', 139)
             ->orderBy('timestamp', 'desc')
-            ->where('timestamp', '<', '2024-11-21 15:10:00')
+            ->where('timestamp', '<', '2024-11-21 15:20:00')
             ->take(120)
             ->get()->reverse()->values();
 
@@ -29,14 +30,19 @@ class MainController extends Controller
 
         $macd15mData = Calculate::MACD($closePrices);
 
-        // Calculate 1-hour VW-MACD
-        $hourlyClosePrices = array_chunk($closePrices, 4, false);
-        $hourlyVolumes     = array_chunk($volumes, 4, false);
+        // Calculate 1-hour
+        $hourlyClosePrices = [];
+        foreach ($recentData as $row) {
+            // Get the timestamp of the row
+            $rowTimestamp = Carbon::parse($row['timestamp']);
 
-        $aggregatedClosePrices = array_map(fn($chunk) => array_sum($chunk) / count($chunk), $hourlyClosePrices);
+            // Check if it's the last 15m period in an hour (e.g., 09:45, 10:45, ...)
+            if ($rowTimestamp->minute === 45) {
+                $hourlyClosePrices[] = (float)$row['close'];
+            }
+        }
 
-        // dd($aggregatedClosePrices);
-        $macd1hData = Calculate::MACD($aggregatedClosePrices);
+        $macd1hData = Calculate::MACD($hourlyClosePrices);
 
         $result = [
             'macd_line'       => $macd15mData['macd_line'],

@@ -97,15 +97,16 @@ class Calculate
             return 0; // Not enough data to calculate RSI
         }
 
-        // Take the last (period + 1) prices for calculation
-        $prices = array_slice($prices, -($period + 1));
+        // Calculate price changes
+        $changes = [];
+        for ($i = 1; $i < count($prices); $i++) {
+            $changes[] = $prices[$i] - $prices[$i - 1];
+        }
 
+        // Separate gains and losses
         $gains = [];
         $losses = [];
-
-        // Calculate gains and losses
-        for ($i = 1; $i < count($prices); $i++) {
-            $change = $prices[$i] - $prices[$i - 1];
+        foreach ($changes as $change) {
             if ($change > 0) {
                 $gains[] = $change;
                 $losses[] = 0;
@@ -115,11 +116,11 @@ class Calculate
             }
         }
 
-        // Calculate the first average gain and loss
+        // Calculate the initial average gain and loss using SMA
         $averageGain = array_sum(array_slice($gains, 0, $period)) / $period;
         $averageLoss = array_sum(array_slice($losses, 0, $period)) / $period;
 
-        // Wilder's Smoothing for gains and losses
+        // Use the SMA values to calculate RSI
         for ($i = $period; $i < count($gains); $i++) {
             $averageGain = (($averageGain * ($period - 1)) + $gains[$i]) / $period;
             $averageLoss = (($averageLoss * ($period - 1)) + $losses[$i]) / $period;
@@ -130,10 +131,9 @@ class Calculate
             return 100; // RSI is 100 if there's no loss
         }
 
-        // Calculate RSI
         $rs = $averageGain / $averageLoss;
         $rsi = 100 - (100 / (1 + $rs));
 
-        return round($rsi, 2); // Rounded to match precision
+        return round($rsi, 2); // Return RSI rounded to two decimal places
     }
 }

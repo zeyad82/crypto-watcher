@@ -119,18 +119,28 @@ class FetchVolumesWebSocket extends Command
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
-        $macd15mData = Calculate::MACD($closePrices, $volumes);
+        $macd15mData = Calculate::MACD($closePrices);
 
         $previousHistogram = $recentData->last()?->meta['vw_histogram'] ?? 0;
 
-        // Calculate 1-hour VW-MACD
-        $hourlyClosePrices = array_chunk($closePrices, 4, false);
-        $hourlyVolumes     = array_chunk($volumes, 4, false);
+        // Calculate 1-hour
+        $hourlyClosePrices = [];
+        foreach ($recentData as $row) {
+            // Get the timestamp of the row
+            $rowTimestamp = Carbon::parse($row['timestamp']);
 
-        $aggregatedClosePrices = array_map(fn($chunk) => array_sum($chunk) / count($chunk), $hourlyClosePrices);
-        $aggregatedVolumes     = array_map(fn($chunk) => array_sum($chunk), $hourlyVolumes);
+            // Check if it's the last 15m period in an hour (e.g., 09:45, 10:45, ...)
+            if (in_array($rowTimestamp->minute, [45, 30, 15, 0]) && $rowTimestamp->minute % 15 === 0) {
+                $hourlyClosePrices[] = (float)$row['close'];
+            }
+        }
 
-        $macd1hData = Calculate::MACD($aggregatedClosePrices, $aggregatedVolumes);
+        // Add current close price if it's a valid 15-minute interval in the hour
+        if (in_array($timestamp->minute, [45, 30, 15, 0]) && $timestamp->minute % 15 === 0) {
+            $hourlyClosePrices[] = (float)$close;
+        }
+        
+        $macd1hData = Calculate::MACD($hourlyClosePrices);
 
         VolumeData::updateOrCreate(
             [
