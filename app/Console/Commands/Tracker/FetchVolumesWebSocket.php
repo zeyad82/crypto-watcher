@@ -7,6 +7,7 @@ use App\Models\VolumeData;
 use App\Services\Calculate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Ratchet\Client\Connector;
 use React\EventLoop\Loop;
 
@@ -18,14 +19,44 @@ class FetchVolumesWebSocket extends Command
     public function handle()
     {
         $this->info('Connecting to Binance WebSocket...');
+
+        // Fetch top 120 cryptos by volume
+        $topCryptos = Crypto::orderByDesc('volume24')
+            ->take(120)
+            ->get();
+
+        // Filter cryptos with insufficient volume data
+        $insufficientDataCryptos = [];
+        foreach ($topCryptos as $crypto) {
+            $minTimestamp = Carbon::now()->subMinutes(119 * 15);
+            $count        = VolumeData::where('crypto_id', $crypto->id)
+                ->where('timestamp', '>=', $minTimestamp)
+                ->count();
+
+            if ($count < 119) {
+                $insufficientDataCryptos[] = $crypto->id;
+            }
+        }
+
+        if (!empty($insufficientDataCryptos)) {
+            Artisan::queue('tracker:fetch-volumes', [
+                'cryptos' => $insufficientDataCryptos,
+            ]);
+        }
+
+        // Connect to Binance WebSocket for the remaining cryptos
+        $cryptoSymbols = $topCryptos->whereNotIn('symbol', $insufficientDataCryptos)->pluck('symbol')->toArray();
+
+        if (empty($cryptoSymbols)) {
+            $this->warn('No cryptos available for WebSocket connection. Exiting.');
+            return 0;
+        }
+
+        $streams = implode('/', array_map(fn($symbol) => str_replace('/', '', strtolower($symbol)) . '@kline_15m', $cryptoSymbols));
+        $url     = "wss://stream.binance.com:9443/stream?streams=$streams";
+
         $loop      = Loop::get();
         $connector = new Connector($loop);
-
-        $cryptoSymbols = Crypto::pluck('symbol')->toArray();
-
-        $streams       = implode('/', array_map(fn($symbol) => str_replace('/', '', strtolower($symbol)) . '@kline_15m', $cryptoSymbols));
-
-        $url           = "wss://stream.binance.com:9443/stream?streams=$streams";
 
         $connector($url)->then(
             function ($connection) use ($loop) {
@@ -87,12 +118,10 @@ class FetchVolumesWebSocket extends Command
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
-
         $vwMacd15mData = Calculate::VW_MACD($closePrices, $volumes);
 
-        // Fetch the most recent histogram if it exists
-        $previousHistogram = $recentData->last()->meta['vw_histogram'] ?? 0;
-        
+        $previousHistogram = $recentData->last()?->meta['vw_histogram'] ?? 0;
+
         // Calculate 1-hour VW-MACD
         $hourlyClosePrices = array_chunk($closePrices, 4, false);
         $hourlyVolumes     = array_chunk($volumes, 4, false);
@@ -121,15 +150,15 @@ class FetchVolumesWebSocket extends Command
                 'price_ema_25' => Calculate::EMA($closePrices, 25),
                 'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
-                    'atr'            => Calculate::ATR($highs, $lows, $closePrices),
-                    'vw_macd_line'   => $vwMacd15mData['macd_line'],
-                    'vw_signal_line' => $vwMacd15mData['signal_line'],
-                    'vw_histogram'   => $vwMacd15mData['histogram'],
+                    'atr'                => Calculate::ATR($highs, $lows, $closePrices),
+                    'vw_macd_line'       => $vwMacd15mData['macd_line'],
+                    'vw_signal_line'     => $vwMacd15mData['signal_line'],
+                    'vw_histogram'       => $vwMacd15mData['histogram'],
                     'previous_histogram' => $previousHistogram,
-                    'rsi'            => Calculate::RSI($closePrices),
-                    '1h_vw_macd_line'   => $vwMacd1hData['macd_line'],
-                    '1h_vw_signal_line' => $vwMacd1hData['signal_line'],
-                    '1h_vw_histogram'   => $vwMacd1hData['histogram'],
+                    'rsi'                => Calculate::RSI($closePrices),
+                    '1h_vw_macd_line'    => $vwMacd1hData['macd_line'],
+                    '1h_vw_signal_line'  => $vwMacd1hData['signal_line'],
+                    '1h_vw_histogram'    => $vwMacd1hData['histogram'],
                 ],
             ]
         );

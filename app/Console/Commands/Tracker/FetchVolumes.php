@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 class FetchVolumes extends Command
 {
-    protected $signature   = 'tracker:fetch-volumes';
-    protected $description = 'Fetch volume data and store 50 candles as history for future WebSocket use.';
+    protected $signature   = 'tracker:fetch-volumes {cryptos?}';
+    protected $description = 'Fetch volume data and store 120 candles as history for future WebSocket use.';
 
     protected $exchange;
 
@@ -34,6 +34,9 @@ class FetchVolumes extends Command
 
         try {
             $cryptos = Crypto::orderBy('last_fetched', 'asc')
+                ->when($this->argument('cryptos'), function($cryptos) {
+                    return $cryptos->whereIn('id', $this->argument('cryptos'));
+                })
                 ->take($batchSize)
                 ->get();
 

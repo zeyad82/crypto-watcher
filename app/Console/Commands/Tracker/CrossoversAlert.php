@@ -101,7 +101,7 @@ class CrossoversAlert extends Command
         foreach ($newCrossovers as $crossover) {
             $trend = strtoupper($crossover['trend']);
             $message .= sprintf(
-                "*#%s*\nNew Trend: %s (Previous: %s)\n\n"
+                "*#%s*\nNew Trend: %s\n\n"
                 . "MACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\n\n"
                 . "EMA15: %s\nEMA25: %s\nEMA50: %s\n\n"
                 . "ATR: %s%%\nRSI: %s\n\n"
@@ -110,7 +110,6 @@ class CrossoversAlert extends Command
                 . "Performance Report:\n%s\n\n",
                 $crossover['crypto']->symbol,
                 $trend,
-                strtoupper($crossover['previous_trend'] ?? 'neutral'),
                 round($crossover['macd_line'], 5),
                 round($crossover['signal_line'], 5),
                 round($crossover['histogram'], 5),
