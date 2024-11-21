@@ -12,9 +12,12 @@ class VolumesAlert extends Command
 {
     protected $signature   = 'tracker:volumes-alert';
     protected $description = 'Track volume spikes and send alerts to Telegram.';
+
     protected $telegramBotToken;
     protected $telegramChatId;
     protected $httpClient;
+
+    protected $rank;
 
     public function __construct()
     {
@@ -28,6 +31,15 @@ class VolumesAlert extends Command
     public function handle()
     {
         $this->info('Tracking new volume spikes...');
+
+        // Fetch all cryptos ordered by 24-hour volume
+        $allCryptos = Crypto::orderByDesc('volume24')->take(120)->get();
+
+        $this->rank = [
+            'top20' => $allCryptos->take(20)->pluck('id')->toArray(),
+            'top50' => $allCryptos->slice(20, 30)->pluck('id')->toArray(),
+            'top120' => $allCryptos->slice(50, 70)->pluck('id')->toArray(),
+        ];
 
         // Fetch recent volume data
         $recentData = VolumeData::with('crypto')
@@ -53,7 +65,7 @@ class VolumesAlert extends Command
             $isSpike = $data->last_volume > ($data->vma_15 * 2);
             $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
 
-            if (! $isSpike || $amplitudePercent < 2) {
+            if (! $isSpike || $amplitudePercent < $this->minPercent($crypto->id)) {
                 continue;
             }
 
@@ -155,5 +167,20 @@ class VolumesAlert extends Command
             return 0; // Avoid division by zero
         }
         return (($high - $low) / $low) * 100;
+    }
+
+    protected function minPercent($cryptoId)
+    {
+        if(in_array($cryptoId, $this->rank['top20'])) {
+            return 0.5;
+        }
+
+        if(in_array($cryptoId, $this->rank['top50'])) {
+            return 1.5;
+        }
+
+        if(in_array($cryptoId, $this->rank['top120'])) {
+            return 3;
+        }
     }
 }
