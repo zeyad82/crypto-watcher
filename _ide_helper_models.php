@@ -16,14 +16,61 @@ namespace App\Models{
  * 
  *
  * @property int $id
+ * @property int $crypto_id
+ * @property int $volume_id
+ * @property string $trend
+ * @property string|null $previous_trend
+ * @property string $entry
+ * @property string $stop_loss
+ * @property string $tp1
+ * @property string $tp2
+ * @property string $tp3
+ * @property int|null $result
+ * @property string|null $highest_price
+ * @property string|null $lowest_price
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Crypto $crypto
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereCryptoId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereEntry($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereHighestPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereLowestPrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert wherePreviousTrend($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereResult($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereStopLoss($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereTp1($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereTp2($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereTp3($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereTrend($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Alert whereVolumeId($value)
+ */
+	class Alert extends \Eloquent {}
+}
+
+namespace App\Models{
+/**
+ * 
+ *
+ * @property int $id
  * @property string $symbol
  * @property string $base_asset
  * @property string $quote_asset
+ * @property string|null $volume24
  * @property string|null $last_trend
  * @property \Illuminate\Support\Carbon|null $last_volume_alert
- * @property string|null $last_fetched
+ * @property \Illuminate\Support\Carbon|null $last_fetched
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Alert> $alerts
+ * @property-read int|null $alerts_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\VolumeData> $volumeData
  * @property-read int|null $volume_data_count
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Crypto newModelQuery()
@@ -38,6 +85,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Crypto whereQuoteAsset($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Crypto whereSymbol($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Crypto whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Crypto whereVolume24($value)
  */
 	class Crypto extends \Eloquent {}
 }

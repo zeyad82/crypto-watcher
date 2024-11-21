@@ -8,6 +8,6 @@ class MainController extends Controller
 {
     public function index()
     {
-        Artisan::call('tracker:fetch-volumes');
+        Artisan::call('tracker:fetch-volumes-websocket');
     }
 }

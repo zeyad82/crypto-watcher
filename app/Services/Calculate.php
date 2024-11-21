@@ -2,13 +2,17 @@
 
 namespace App\Services;
 
-
 class Calculate
 {
     public static function EMA(array $values, int $period): float
     {
-        $k   = 2 / ($period + 1);
-        $ema = $values[0];
+        if (count($values) < $period) {
+            return 0;
+        }
+
+        $values = array_slice($values, -$period); // Use only the last $period values
+        $k      = 2 / ($period + 1);
+        $ema    = $values[0];
 
         foreach ($values as $index => $value) {
             if ($index === 0) {
@@ -26,12 +30,20 @@ class Calculate
             return 0;
         }
 
-        $subset = array_slice($data, -$period);
+        $subset = array_slice($data, -$period); // Use only the last $period values
         return array_sum($subset) / $period;
     }
 
     public static function ATR(array $highs, array $lows, array $closes, int $period = 14): float
     {
+        if (count($highs) < $period || count($lows) < $period || count($closes) < $period) {
+            return 0;
+        }
+
+        $highs  = array_slice($highs, -$period); // Use only the last $period values
+        $lows   = array_slice($lows, -$period);
+        $closes = array_slice($closes, -($period + 1)); // Need one extra value for True Range calculation
+
         $tr = [];
         for ($i = 1; $i < count($highs); $i++) {
             $tr[] = max(
@@ -41,11 +53,13 @@ class Calculate
             );
         }
 
-        return array_sum(array_slice($tr, -$period)) / $period;
+        return array_sum($tr) / $period;
     }
 
     public static function MACD(array $closingPrices): array
     {
+        $closingPrices = array_slice($closingPrices, -26); // Use enough data for MACD calculation
+
         $ema12 = Self::EMAs($closingPrices, 12);
         $ema26 = Self::EMAs($closingPrices, 26);
 
@@ -62,9 +76,13 @@ class Calculate
 
     public static function EMAs(array $values, int $period): array
     {
+        if (count($values) < $period) {
+            return [];
+        }
+
+        $values = array_slice($values, -$period); // Use only the last $period values
         $k      = 2 / ($period + 1);
-        $ema    = [];
-        $ema[0] = $values[0];
+        $ema    = [$values[0]];
 
         for ($i = 1; $i < count($values); $i++) {
             $ema[$i] = ($values[$i] * $k) + ($ema[$i - 1] * (1 - $k));
@@ -73,26 +91,23 @@ class Calculate
         return $ema;
     }
 
-    /**
-     * Calculate Volume-Weighted EMA (VWEMA) as an array.
-     *
-     * @param array $prices Array of closing prices.
-     * @param array $volumes Array of corresponding volumes.
-     * @param int $period EMA period (e.g., 12, 26).
-     * @return array Array of VWEMA values.
-     */
     public static function VWEMAs(array $prices, array $volumes, int $period): array
     {
-        $k       = 2 / ($period + 1); // Smoothing factor
+        if (count($prices) < $period || count($volumes) < $period) {
+            return [];
+        }
+
+        $prices  = array_slice($prices, -$period); // Use only the last $period values
+        $volumes = array_slice($volumes, -$period);
+
+        $k       = 2 / ($period + 1);
         $vwemas  = [];
         $weights = array_map(fn($price, $volume) => $volume > 0 ? $price * $volume : 0, $prices, $volumes);
 
-        // Initialize first VWEMA value with the weighted average
         $vwemas[0] = $volumes[0] > 0 ? $weights[0] / $volumes[0] : $prices[0];
 
         for ($i = 1; $i < count($prices); $i++) {
-            // Skip calculations for zero volume and provide fallback
-            $currentVolume = $volumes[$i] > 0 ? $volumes[$i] : 1; // Avoid zero division
+            $currentVolume = $volumes[$i] > 0 ? $volumes[$i] : 1;
             $currentWeight = $prices[$i] * $currentVolume;
 
             $vwemas[$i] = ($currentWeight * $k) + ($vwemas[$i - 1] * (1 - $k));
@@ -101,30 +116,18 @@ class Calculate
         return $vwemas;
     }
 
-
-    /**
-     * Calculate Volume-Weighted MACD (VW-MACD).
-     *
-     * @param array $prices Array of closing prices.
-     * @param array $volumes Array of corresponding volumes.
-     * @return array
-     */
     public static function VW_MACD(array $prices, array $volumes): array
     {
-        // Step 1: Calculate VWEMAs for short and long periods as arrays
-        $vwema12 = Self::VWEMAs($prices, $volumes, 12); // Array of 12-period VWEMA values
-        $vwema26 = Self::VWEMAs($prices, $volumes, 26); // Array of 26-period VWEMA values
+        $prices  = array_slice($prices, -26); // Use enough data for VW-MACD calculation
+        $volumes = array_slice($volumes, -26);
 
-        // Step 2: Calculate the VW-MACD Line as the difference between VWEMA arrays
+        $vwema12 = Self::VWEMAs($prices, $volumes, 12);
+        $vwema26 = Self::VWEMAs($prices, $volumes, 26);
+
         $vwMacdLine = array_map(fn($short, $long) => $short - $long, $vwema12, $vwema26);
+        $signalLine = Self::EMAs($vwMacdLine, 9);
+        $histogram  = array_map(fn($macd, $signal) => $macd - $signal, $vwMacdLine, $signalLine);
 
-        // Step 3: Calculate the Signal Line as a 9-period EMA of the VW-MACD Line
-        $signalLine = Self::EMAs($vwMacdLine, 9); // Array of Signal Line values
-
-        // Step 4: Calculate Histogram as the difference between VW-MACD Line and Signal Line
-        $histogram = array_map(fn($macd, $signal) => $macd - $signal, $vwMacdLine, $signalLine);
-
-        // Step 5: Return the latest values of MACD Line,s Signal Line, and Histogram
         return [
             'macd_line'   => end($vwMacdLine),
             'signal_line' => end($signalLine),
@@ -132,25 +135,24 @@ class Calculate
         ];
     }
 
-    /**
-     * Calculate RSI (Relative Strength Index).
-     * 
-     * @param array $prices Array of closing prices.
-     * @param int $period RSI period.
-     * @return float
-     */
     public static function RSI(array $prices, int $period = 14): float
     {
+        if (count($prices) < $period) {
+            return 0;
+        }
+
+        $prices = array_slice($prices, -($period + 1)); // Use enough data for RSI calculation
+
         $gains = $losses = [];
 
         for ($i = 1; $i < count($prices); $i++) {
             $change = $prices[$i] - $prices[$i - 1];
 
             if ($change > 0) {
-                $gains[] = $change;
+                $gains[]  = $change;
                 $losses[] = 0;
             } else {
-                $gains[] = 0;
+                $gains[]  = 0;
                 $losses[] = abs($change);
             }
         }
@@ -159,7 +161,7 @@ class Calculate
         $averageLoss = array_sum(array_slice($losses, -$period)) / $period;
 
         if ($averageLoss == 0) {
-            return 100; // Avoid division by zero, assume RSI is 100 (overbought).
+            return 100;
         }
 
         $rs  = $averageGain / $averageLoss;
@@ -167,5 +169,4 @@ class Calculate
 
         return $rsi;
     }
-
 }

@@ -47,8 +47,8 @@ class FetchVolumes extends Command
 
             foreach ($cryptos as $crypto) {
                 try {
-                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, '15m', null, 50);
-                    if (count($ohlcv) < 50) {
+                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, '15m', null, 120);
+                    if (count($ohlcv) < 120) {
                         Log::warning("Insufficient candle data for {$crypto->symbol}");
                         $progressBar->advance();
                         continue;
