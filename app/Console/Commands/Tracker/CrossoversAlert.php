@@ -31,8 +31,19 @@ class CrossoversAlert extends Command
     {
         $this->info('Tracking new EMA crossovers...');
 
+        // Fetch the top 120 cryptos by 24-hour trading volume
+        $topCryptos = Crypto::orderByDesc('volume24')
+            ->take(120)
+            ->pluck('id');
+
+        if ($topCryptos->isEmpty()) {
+            $this->info('No cryptos available for analysis.');
+            return 0;
+        }
+
         // Fetch recent EMA data
         $recentData = VolumeData::with('crypto.alerts')
+        ->whereIn('crypto_id', $topCryptos)
         ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
         ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
         ->get();
@@ -48,9 +59,6 @@ class CrossoversAlert extends Command
             // Get the previous trend from the crypto record
             $crypto        = $data->crypto;
             $previousTrend = $crypto->last_trend;
-
-            // Update the last_trend in the database
-            $crypto->update(['last_trend' => $currentTrend]);
 
             // Check if the trend has changed
             if ($currentTrend !== $previousTrend && $currentTrend != 'neutral') {
@@ -77,6 +85,9 @@ class CrossoversAlert extends Command
                     'crypto_id' => $data->crypto_id,
                     'volume_id' => $data->id,
                 ] + $crossover);
+
+                // Update the last_trend in the database
+                $crypto->update(['last_trend' => $currentTrend]);
             }
         }
 
