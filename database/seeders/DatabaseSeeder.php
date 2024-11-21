@@ -15,9 +15,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        if(! Schema::hasColumn('alerts', 'volume_id')) {
-            Schema::table('alerts', function (Blueprint $table) {
-                $table->foreignId('volume_id')->nullable()->after('crypto_id')->constrained('volume_data')->onDelete('cascade');
+        if(! Schema::hasColumn('cryptos', 'volume24')) {
+            Schema::table('cryptos', function (Blueprint $table) {
+                $table->decimal('volume24', 20, 8)->nullable()->after('quote_asset');
             });
         }
 

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command(FetchCryptos::class)->daily();
+Schedule::command(FetchCryptos::class)->everyFifteenMinutes();
 
 Schedule::command(CrossoversAlert::class)->everyMinute();
 Schedule::command(VolumesAlert::class)->everyMinute();

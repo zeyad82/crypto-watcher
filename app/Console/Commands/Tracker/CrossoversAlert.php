@@ -96,7 +96,7 @@ class CrossoversAlert extends Command
                 . "ATR: %s%%\nRSI: %s\n\n"
                 . "Price: %s USDT\nTP1: %s\nTP2: %s\nTP3: %s\nSL: %s\n\n"
                 . "Time: %s\n\n"
-                . "Performance Report:\n%s",
+                . "Performance Report:\n%s\n\n",
                 $crossover['crypto']->symbol,
                 $trend,
                 strtoupper($crossover['previous_trend'] ?? 'neutral'),
@@ -133,7 +133,7 @@ class CrossoversAlert extends Command
     {
         $normalizedAtr = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
 
-        if ($normalizedAtr < 3) {
+        if ($normalizedAtr < 2) {
             return 'neutral';
         }
 
@@ -151,12 +151,12 @@ class CrossoversAlert extends Command
         $momentumDown = $vwHistogram < 0 && $vwHistogram < $previousHistogram;
 
         // Bullish Trend: VW-MACD Line > Signal Line + RSI < 30 (oversold)
-        if ($vwMacdLine > $vwSignalLine && $momentumUp && $rsi < 45) {
+        if ($vwMacdLine > $vwSignalLine && $momentumUp && $rsi < 55) {
             return 'bullish';
         }
 
         // Bearish Trend: VW-MACD Line < Signal Line + RSI > 70 (overbought)
-        if ($vwMacdLine < $vwSignalLine && $momentumDown && $rsi > 55) {
+        if ($vwMacdLine < $vwSignalLine && $momentumDown && $rsi > 45) {
             return 'bearish';
         }
 

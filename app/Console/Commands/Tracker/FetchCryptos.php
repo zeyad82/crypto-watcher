@@ -20,7 +20,7 @@ class FetchCryptos extends Command
      *
      * @var string
      */
-    protected $description = 'Fetch all currently listed USDT trading pairs from Binance and update the database.';
+    protected $description = 'Fetch all currently listed USDT trading pairs from Binance, including 24-hour volume, and update the database.';
 
     /**
      * Binance API instance.
@@ -45,15 +45,24 @@ class FetchCryptos extends Command
      */
     public function handle()
     {
-        $this->info('Fetching currently listed USDT trading pairs from Binance...');
+        $this->info('Fetching currently listed USDT trading pairs and their 24-hour volumes from Binance...');
 
         try {
             // Fetch all market pairs from Binance
             $markets = $this->exchange->fetch_markets();
 
+            // Fetch 24-hour tickers for volumes
+            $tickers = $this->exchange->fetch_tickers();
+
             // Filter for active USDT trading pairs
             $usdtMarkets = collect($markets)
                 ->filter(fn($market) => $market['active'] && $market['quote'] === 'USDT')
+                ->map(function ($market) use ($tickers) {
+                    $symbol = $market['symbol'];
+                    $volume = $tickers[$symbol]['quoteVolume'] ?? 0; // Get 24-hour volume
+                    $market['volume'] = $volume;
+                    return $market;
+                })
                 ->toArray();
 
             if (empty($usdtMarkets)) {
@@ -91,12 +100,14 @@ class FetchCryptos extends Command
             $symbol = $market['symbol'];
             $base   = $market['base'];
             $quote  = $market['quote'];
+            $volume = $market['volume']; // Include 24-hour volume
 
             Crypto::updateOrCreate(
                 ['symbol' => $symbol],
                 [
                     'base_asset'   => $base,
                     'quote_asset'  => $quote,
+                    'volume24'     => $volume, // Save volume
                     'last_fetched' => now(),
                 ]
             );

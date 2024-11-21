@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('symbol')->unique(); // Unique trading pair symbol
             $table->string('base_asset');      // Base asset (e.g., BTC)
             $table->string('quote_asset');     // Quote asset (e.g., USDT)
+            $table->decimal('volume24', 20, 8)->nullable();
             $table->string('last_trend')->nullable();
             $table->timestamp('last_volume_alert')->nullable();
             $table->timestamp('last_fetched')->nullable();
