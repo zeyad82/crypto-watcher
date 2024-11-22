@@ -136,4 +136,61 @@ class Calculate
 
         return round($rsi, 2); // Return RSI rounded to two decimal places
     }
+
+    public static function ADX(array $highs, array $lows, array $closes, int $period = 14): array
+    {
+        if (count($highs) < $period + 1 || count($lows) < $period + 1 || count($closes) < $period + 1) {
+            return ['adx' => 0, '+di' => 0, '-di' => 0]; // Not enough data
+        }
+
+        $trueRanges = [];
+        $plusDM = [];
+        $minusDM = [];
+
+        // Step 1: Calculate TR, +DM, and -DM
+        for ($i = 1; $i < count($highs); $i++) {
+            $currentHigh = $highs[$i];
+            $currentLow = $lows[$i];
+            $previousClose = $closes[$i - 1];
+            $previousHigh = $highs[$i - 1];
+            $previousLow = $lows[$i - 1];
+
+            $tr = max(
+                $currentHigh - $currentLow,
+                abs($currentHigh - $previousClose),
+                abs($currentLow - $previousClose)
+            );
+            $trueRanges[] = $tr;
+
+            $positiveDM = ($currentHigh - $previousHigh > $previousLow - $currentLow && $currentHigh - $previousHigh > 0)
+                ? $currentHigh - $previousHigh : 0;
+            $negativeDM = ($previousLow - $currentLow > $currentHigh - $previousHigh && $previousLow - $currentLow > 0)
+                ? $previousLow - $currentLow : 0;
+
+            $plusDM[] = $positiveDM;
+            $minusDM[] = $negativeDM;
+        }
+
+        // Step 2: Smooth TR, +DM, and -DM using Wilder's smoothing technique (EMAs)
+        $smoothedTR = end(self::EMAs($trueRanges, $period));
+        $smoothedPlusDM = end(self::EMAs($plusDM, $period));
+        $smoothedMinusDM = end(self::EMAs($minusDM, $period));
+
+        // Step 3: Calculate +DI, -DI
+        $plusDI = ($smoothedTR > 0) ? ($smoothedPlusDM / $smoothedTR) * 100 : 0;
+        $minusDI = ($smoothedTR > 0) ? ($smoothedMinusDM / $smoothedTR) * 100 : 0;
+
+        // Step 4: Calculate DX
+        $dx = ($plusDI + $minusDI > 0) ? abs($plusDI - $minusDI) / ($plusDI + $minusDI) * 100 : 0;
+
+        // Step 5: Smooth DX to calculate ADX
+        $adx = self::EMAs([$dx], $period);
+
+        return [
+            'adx' => round(end($adx), 2),
+            '+di' => round($plusDI, 2),
+            '-di' => round($minusDI, 2),
+        ];
+    }
+
 }

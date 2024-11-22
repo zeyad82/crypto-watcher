@@ -62,7 +62,7 @@ class VolumesAlert extends Command
             }
 
             // Identify volume spikes
-            $isSpike = $data->last_volume > ($data->vma_15 * 2);
+            $isSpike = $data->last_volume > ($data->vma_15 * 1.6);
             $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
 
             if (! $isSpike || $amplitudePercent < $this->minPercent($crypto->id)) {

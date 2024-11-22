@@ -104,7 +104,7 @@ class CrossoversAlert extends Command
                 "*#%s*\nNew Trend: %s\n\n"
                 . "MACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\n\n"
                 . "EMA15: %s\nEMA25: %s\nEMA50: %s\n\n"
-                . "ATR: %s%%\nRSI: %s\n\n"
+                . "ATR: %s%%\nRSI: %s\nADX: %s\n+DI: %s\n-DI: %s\n\n"
                 . "Price: %s USDT\nTP1: %s\nTP2: %s\nTP3: %s\nSL: %s\n\n"
                 . "Time: %s\n\n"
                 . "Performance Report:\n%s\n\n",
@@ -118,6 +118,9 @@ class CrossoversAlert extends Command
                 round($crossover['ema_50'], 8),
                 round($crossover['atr'], 2),
                 round($crossover['rsi'], 2),
+                round($crossover['adx'], 2),
+                round($crossover['+di'], 2),
+                round($crossover['-di'], 2),
                 round($crossover['price'], 8),
                 round($crossover['tp1'], 8),
                 round($crossover['tp2'], 8),
@@ -141,17 +144,18 @@ class CrossoversAlert extends Command
     */
     protected function determineTrend(VolumeData $data): string
     {
-        $normalizedAtr = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
+        // $normalizedAtr = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
 
-        if ($normalizedAtr < 2) {
-            return 'neutral';
-        }
 
         // Retrieve VW-MACD data
         $macdLine   = $data->meta->get('macd_line');
         $signalLine = $data->meta->get('signal_line');
         $histogram  = $data->meta->get('histogram');
         $previousHistogram = $data->meta->get('previous_histogram');
+
+        $adx = $data->meta->get('adx');
+        $plusDI = $data->meta->get('+di');
+        $minusDI = $data->meta->get('-di');
 
         // Retrieve RSI
         $rsi = $data->meta->get('rsi');
@@ -160,14 +164,14 @@ class CrossoversAlert extends Command
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
-        // Bullish Trend: VW-MACD Line > Signal Line + RSI < 30 (oversold)
-        if ($macdLine > $signalLine && $momentumUp && $rsi < 55) {
-            return 'bullish';
-        }
-
-        // Bearish Trend: VW-MACD Line < Signal Line + RSI > 70 (overbought)
-        if ($macdLine < $signalLine && $momentumDown && $rsi > 45) {
-            return 'bearish';
+        // Include ADX confirmation for trend strength
+        if ($adx > 25) {
+            if ($macdLine > $signalLine && $momentumUp && $rsi < 40 && $plusDI > $minusDI) {
+                return 'bullish';
+            }
+            if ($macdLine < $signalLine && $momentumDown && $rsi > 55 && $minusDI > $plusDI) {
+                return 'bearish';
+            }
         }
 
         return 'neutral';

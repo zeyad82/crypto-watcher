@@ -123,24 +123,8 @@ class FetchVolumesWebSocket extends Command
 
         $previousHistogram = $recentData->last()?->meta['vw_histogram'] ?? 0;
 
-        // Calculate 1-hour
-        $hourlyClosePrices = [];
-        foreach ($recentData as $row) {
-            // Get the timestamp of the row
-            $rowTimestamp = Carbon::parse($row['timestamp']);
-
-            // Check if it's the last 15m period in an hour (e.g., 09:45, 10:45, ...)
-            if (in_array($rowTimestamp->minute, [45, 30, 15, 0]) && $rowTimestamp->minute % 15 === 0) {
-                $hourlyClosePrices[] = (float)$row['close'];
-            }
-        }
-
-        // Add current close price if it's a valid 15-minute interval in the hour
-        if (in_array($timestamp->minute, [45, 30, 15, 0]) && $timestamp->minute % 15 === 0) {
-            $hourlyClosePrices[] = (float)$close;
-        }
-        
-        $macd1hData = Calculate::MACD($hourlyClosePrices);
+        // Calculate ADX, +DI, and -DI
+        $adxData = Calculate::ADX($highs, $lows, $closePrices, 14);
 
         VolumeData::updateOrCreate(
             [
@@ -167,9 +151,10 @@ class FetchVolumesWebSocket extends Command
                     'histogram'       => $macd15mData['histogram'],
                     'previous_histogram' => $previousHistogram,
                     'rsi'                => Calculate::RSI($closePrices),
-                    '1h_macd_line'    => $macd1hData['macd_line'],
-                    '1h_signal_line'  => $macd1hData['signal_line'],
-                    '1h_histogram'    => $macd1hData['histogram'],
+                    'adx'               => $adxData['adx'],
+                    '+di'               => $adxData['+di'],
+                    '-di'               => $adxData['-di'],
+                    
                 ],
             ]
         );
