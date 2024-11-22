@@ -61,17 +61,27 @@ class Calculate
             return ['macd_line' => 0, 'signal_line' => 0, 'histogram' => 0];
         }
 
-        $ema12 = self::EMAs($closingPrices, 12);
-        $ema26 = self::EMAs($closingPrices, 26);
+        // Scale prices up to handle small values
+        $scalingFactor = 1e6;
+        $scaledPrices  = array_map(fn($price) => $price * $scalingFactor, $closingPrices);
 
-        $macdLine   = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
+        // Calculate EMA values for scaled prices
+        $ema12 = self::EMAs($scaledPrices, 12);
+        $ema26 = self::EMAs($scaledPrices, 26);
+
+        // Calculate MACD line and scale back
+        $macdLine = array_map(fn($e12, $e26) => ($e12 - $e26) / $scalingFactor, $ema12, $ema26);
+
+        // Calculate Signal line on scaled MACD line
         $signalLine = self::EMAs($macdLine, 9);
-        $histogram  = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
+
+        // Calculate Histogram and scale back
+        $histogram = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
 
         return [
-            'macd_line'   => round(end($macdLine), 5),
-            'signal_line' => round(end($signalLine), 5),
-            'histogram'   => round(end($histogram), 5),
+            'macd_line' => round(end($macdLine), 10), // Use higher precision rounding
+            'signal_line' => round(end($signalLine), 10),
+            'histogram' => round(end($histogram), 10),
         ];
     }
 
@@ -82,10 +92,14 @@ class Calculate
         }
 
         $k   = 2 / ($period + 1);
-        $ema = [$values[0]];
+        $ema = [$values[0]]; // Initialize with the first value
 
         for ($i = 1; $i < count($values); $i++) {
-            $ema[$i] = ($values[$i] * $k) + ($ema[$i - 1] * (1 - $k));
+            $ema[$i] = bcadd(
+                bcmul($values[$i], $k, 10),
+                bcmul($ema[$i - 1], (1 - $k), 10),
+                10
+            );
         }
 
         return $ema;
@@ -144,17 +158,17 @@ class Calculate
         }
 
         $trueRanges = [];
-        $plusDM = [];
-        $minusDM = [];
-        $dxHistory = [];
+        $plusDM     = [];
+        $minusDM    = [];
+        $dxHistory  = [];
 
         // Step 1: Calculate TR, +DM, and -DM
         for ($i = 1; $i < count($highs); $i++) {
-            $currentHigh = $highs[$i];
-            $currentLow = $lows[$i];
+            $currentHigh   = $highs[$i];
+            $currentLow    = $lows[$i];
             $previousClose = $closes[$i - 1];
-            $previousHigh = $highs[$i - 1];
-            $previousLow = $lows[$i - 1];
+            $previousHigh  = $highs[$i - 1];
+            $previousLow   = $lows[$i - 1];
 
             $tr = max(
                 $currentHigh - $currentLow,
@@ -164,37 +178,37 @@ class Calculate
             $trueRanges[] = $tr;
 
             $positiveDM = ($currentHigh - $previousHigh > $previousLow - $currentLow && $currentHigh - $previousHigh > 0)
-                ? $currentHigh - $previousHigh : 0;
+            ? $currentHigh - $previousHigh : 0;
             $negativeDM = ($previousLow - $currentLow > $currentHigh - $previousHigh && $previousLow - $currentLow > 0)
-                ? $previousLow - $currentLow : 0;
+            ? $previousLow - $currentLow : 0;
 
-            $plusDM[] = $positiveDM;
+            $plusDM[]  = $positiveDM;
             $minusDM[] = $negativeDM;
         }
 
         // Step 2: Smooth TR, +DM, and -DM
-        $smoothedTRValues = self::EMAs($trueRanges, $period);
-        $smoothedPlusDMValues = self::EMAs($plusDM, $period);
+        $smoothedTRValues      = self::EMAs($trueRanges, $period);
+        $smoothedPlusDMValues  = self::EMAs($plusDM, $period);
         $smoothedMinusDMValues = self::EMAs($minusDM, $period);
 
         if (empty($smoothedTRValues) || empty($smoothedPlusDMValues) || empty($smoothedMinusDMValues)) {
             return ['adx' => 0, '+di' => 0, '-di' => 0];
         }
 
-        $smoothedTR = end($smoothedTRValues);
-        $smoothedPlusDM = end($smoothedPlusDMValues);
+        $smoothedTR      = end($smoothedTRValues);
+        $smoothedPlusDM  = end($smoothedPlusDMValues);
         $smoothedMinusDM = end($smoothedMinusDMValues);
 
         // Step 3: Calculate +DI, -DI
-        $plusDI = ($smoothedTR > 0) ? ($smoothedPlusDM / $smoothedTR) * 100 : 0;
+        $plusDI  = ($smoothedTR > 0) ? ($smoothedPlusDM / $smoothedTR) * 100 : 0;
         $minusDI = ($smoothedTR > 0) ? ($smoothedMinusDM / $smoothedTR) * 100 : 0;
 
         // Step 4: Calculate DX
         for ($i = 0; $i < count($smoothedPlusDMValues); $i++) {
-            $currentPlusDI = ($smoothedTR > 0) ? ($smoothedPlusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
+            $currentPlusDI  = ($smoothedTR > 0) ? ($smoothedPlusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
             $currentMinusDI = ($smoothedTR > 0) ? ($smoothedMinusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
-            $dx = ($currentPlusDI + $currentMinusDI > 0) ? abs($currentPlusDI - $currentMinusDI) / ($currentPlusDI + $currentMinusDI) * 100 : 0;
-            $dxHistory[] = $dx;
+            $dx             = ($currentPlusDI + $currentMinusDI > 0) ? abs($currentPlusDI - $currentMinusDI) / ($currentPlusDI + $currentMinusDI) * 100 : 0;
+            $dxHistory[]    = $dx;
         }
 
         if (count($dxHistory) < $period) {
