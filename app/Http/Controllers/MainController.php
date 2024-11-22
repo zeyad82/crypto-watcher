@@ -17,7 +17,7 @@ class MainController extends Controller
     public function test()
     {
 
-        $recentData = VolumeData::where('crypto_id', 1)
+        $recentData = VolumeData::where('crypto_id', 330)
             ->orderBy('timestamp', 'desc')
             ->where('timestamp', '<', '2024-11-22 06:15:00')
             ->take(120)
@@ -43,6 +43,7 @@ class MainController extends Controller
             '-di'                => $adxData['-di'],
         ];
 
+        dump('data', json_encode($recentData));
         dd('result', json_encode($result));
 
     }

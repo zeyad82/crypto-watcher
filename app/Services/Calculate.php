@@ -61,27 +61,18 @@ class Calculate
             return ['macd_line' => 0, 'signal_line' => 0, 'histogram' => 0];
         }
 
-        // Scale prices up to handle small values
-        $scalingFactor = 1e6;
-        $scaledPrices  = array_map(fn($price) => $price * $scalingFactor, $closingPrices);
+        $ema12 = self::EMAs($closingPrices, 12);
+        $ema26 = self::EMAs($closingPrices, 26);
 
-        // Calculate EMA values for scaled prices
-        $ema12 = self::EMAs($scaledPrices, 12);
-        $ema26 = self::EMAs($scaledPrices, 26);
-
-        // Calculate MACD line and scale back
-        $macdLine = array_map(fn($e12, $e26) => ($e12 - $e26) / $scalingFactor, $ema12, $ema26);
-
-        // Calculate Signal line on scaled MACD line
+        $macdLine   = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
         $signalLine = self::EMAs($macdLine, 9);
+        $histogram  = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
 
-        // Calculate Histogram and scale back
-        $histogram = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
-
+        // Format the results to ensure compatibility
         return [
-            'macd_line' => round(end($macdLine), 10), // Use higher precision rounding
-            'signal_line' => round(end($signalLine), 10),
-            'histogram' => round(end($histogram), 10),
+            'macd_line'   => self::formatNumber(end($macdLine)),
+            'signal_line' => self::formatNumber(end($signalLine)),
+            'histogram'   => self::formatNumber(end($histogram)),
         ];
     }
 
@@ -91,18 +82,38 @@ class Calculate
             return [];
         }
 
-        $k   = 2 / ($period + 1);
-        $ema = [$values[0]]; // Initialize with the first value
+        $k   = self::formatNumber(2 / ($period + 1)); // Convert constant to formatted string
+        $ema = [self::formatNumber($values[0])]; // Initialize with the first value as a sanitized string
 
         for ($i = 1; $i < count($values); $i++) {
+            // Sanitize inputs
+            $currentValue = self::formatNumber($values[$i]);
+            $previousEma  = self::formatNumber($ema[$i - 1]);
+
+            // Perform EMA calculation
             $ema[$i] = bcadd(
-                bcmul($values[$i], $k, 10),
-                bcmul($ema[$i - 1], (1 - $k), 10),
+                bcmul($currentValue, $k, 10),
+                bcmul($previousEma, self::formatNumber(1 - (2 / ($period + 1))), 10),
                 10
             );
         }
 
-        return $ema;
+        return array_map('floatval', $ema); // Convert the final EMA values back to floats
+    }
+
+    public static function formatNumber($value): string
+    {
+        if (!is_numeric($value)) {
+            return '0'; // Return 0 for non-numeric inputs
+        }
+
+        // Convert scientific notation to decimal format
+        if (stripos((string) $value, 'e') !== false) {
+            $value = sprintf('%.20f', (float) $value);
+        }
+
+        // Trim trailing zeros and return
+        return rtrim($value, '0') ?: '0';
     }
 
     public static function RSI(array $prices, int $period = 14): float
