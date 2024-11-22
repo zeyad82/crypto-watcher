@@ -76,6 +76,7 @@ class CrossoversAlert extends Command
                     'signal_line'    => $data->meta->get('signal_line'),
                     'histogram'      => $data->meta->get('histogram'),
                     'rsi'            => $data->meta->get('rsi'),
+                    'adx'            => $data->meta->get('adx'),
                     'entry'          => $data->latest_price,
                 ] + $this->setup($data, $currentTrend);
 
@@ -151,13 +152,13 @@ class CrossoversAlert extends Command
                 'bearishDI' => $minusDI > $plusDI,
             ]);
         }
-        
+
         // Include ADX confirmation for trend strength
-        if ($adx > 10) {
-            if ($macdLine > $signalLine && $momentumUp && $rsi < 40 && $plusDI > $minusDI) {
+        if ($adx > 25) {
+            if ($macdLine > $signalLine && $momentumUp && $rsi < 40) {
                 return 'bullish';
             }
-            if ($macdLine < $signalLine && $momentumDown && $rsi > 55 && $minusDI > $plusDI) {
+            if ($macdLine < $signalLine && $momentumDown && $rsi > 55) {
                 return 'bearish';
             }
         }

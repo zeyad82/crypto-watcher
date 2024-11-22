@@ -40,7 +40,7 @@ class UpdateAlertResults extends Command
             $alert->highest_price = max($alert->highest_price ?? $currentPrice, $currentPrice);
             $alert->lowest_price  = min($alert->lowest_price ?? $currentPrice, $currentPrice);
 
-            if($alert->trend = 'bullish') {
+            if($alert->trend === 'bullish') {
                 if ($alert->highest_price >= $alert->tp3) {
                     $alert->result = 3; 
                     $alert->status = 'closed';
