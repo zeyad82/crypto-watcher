@@ -8,6 +8,7 @@ use App\Models\VolumeData;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class CrossoversAlert extends Command
 {
@@ -129,8 +130,30 @@ class CrossoversAlert extends Command
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
+        if(env('LOG_ALERTS')) {
+            Log::info('trend check', [
+                'crypto' => $data->crypto->base_asset,
+                'adx' => $adx,
+                'plusDI' => $plusDI,
+                'minusDI' => $minusDI,
+                'rsi' => $rsi,
+                'macdLine' => $macdLine,
+                'signalLine' => $signalLine,
+                'histogram' => $histogram,
+                'previousHistogram' => $previousHistogram,
+                'bullishMCAD' => $macdLine > $signalLine,
+                'momentumUp' => $momentumUp,
+                'bullishRSI' => $rsi < 40,
+                'bullishDI' =>  $plusDI > $minusDI,
+                'bearishMCAD' => $macdLine < $signalLine,
+                'momentumDown' => $momentumDown,
+                'bearishRSI' => $rsi > 55,
+                'bearishDI' => $minusDI > $plusDI,
+            ]);
+        }
+        
         // Include ADX confirmation for trend strength
-        if ($adx > 25) {
+        if ($adx > 10) {
             if ($macdLine > $signalLine && $momentumUp && $rsi < 40 && $plusDI > $minusDI) {
                 return 'bullish';
             }

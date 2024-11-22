@@ -120,7 +120,7 @@ class FetchVolumesWebSocket extends Command
 
         $macd15mData = Calculate::MACD($closePrices);
 
-        $previousHistogram = $recentData->last()?->meta['vw_histogram'] ?? 0;
+        $previousHistogram = $recentData->last()?->meta['histogram'] ?? 0;
 
         // Calculate ADX, +DI, and -DI
         $adxData = Calculate::ADX($highs, $lows, $closePrices, 14);
