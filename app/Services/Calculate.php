@@ -10,7 +10,7 @@ class Calculate
             return 0;
         }
 
-        $k = 2 / ($period + 1);
+        $k   = 2 / ($period + 1);
         $ema = $values[0]; // Initialize with the first value
 
         foreach ($values as $index => $value) {
@@ -39,8 +39,8 @@ class Calculate
             return 0;
         }
 
-        $highs = array_slice($highs, -$period);
-        $lows = array_slice($lows, -$period);
+        $highs  = array_slice($highs, -$period);
+        $lows   = array_slice($lows, -$period);
         $closes = array_slice($closes, -($period + 1)); // Need one extra value for True Range calculation
 
         $tr = [];
@@ -64,14 +64,14 @@ class Calculate
         $ema12 = self::EMAs($closingPrices, 12);
         $ema26 = self::EMAs($closingPrices, 26);
 
-        $macdLine = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
+        $macdLine   = array_map(fn($e12, $e26) => $e12 - $e26, $ema12, $ema26);
         $signalLine = self::EMAs($macdLine, 9);
-        $histogram = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
+        $histogram  = array_map(fn($macd, $signal) => $macd - $signal, $macdLine, $signalLine);
 
         return [
-            'macd_line' => round(end($macdLine), 5),
+            'macd_line'   => round(end($macdLine), 5),
             'signal_line' => round(end($signalLine), 5),
-            'histogram' => round(end($histogram), 5),
+            'histogram'   => round(end($histogram), 5),
         ];
     }
 
@@ -81,7 +81,7 @@ class Calculate
             return [];
         }
 
-        $k = 2 / ($period + 1);
+        $k   = 2 / ($period + 1);
         $ema = [$values[0]];
 
         for ($i = 1; $i < count($values); $i++) {
@@ -104,14 +104,14 @@ class Calculate
         }
 
         // Separate gains and losses
-        $gains = [];
+        $gains  = [];
         $losses = [];
         foreach ($changes as $change) {
             if ($change > 0) {
-                $gains[] = $change;
+                $gains[]  = $change;
                 $losses[] = 0;
             } else {
-                $gains[] = 0;
+                $gains[]  = 0;
                 $losses[] = abs($change);
             }
         }
@@ -131,7 +131,7 @@ class Calculate
             return 100; // RSI is 100 if there's no loss
         }
 
-        $rs = $averageGain / $averageLoss;
+        $rs  = $averageGain / $averageLoss;
         $rsi = 100 - (100 / (1 + $rs));
 
         return round($rsi, 2); // Return RSI rounded to two decimal places
@@ -144,16 +144,16 @@ class Calculate
         }
 
         $trueRanges = [];
-        $plusDM = [];
-        $minusDM = [];
+        $plusDM     = [];
+        $minusDM    = [];
 
         // Step 1: Calculate TR, +DM, and -DM
         for ($i = 1; $i < count($highs); $i++) {
-            $currentHigh = $highs[$i];
-            $currentLow = $lows[$i];
+            $currentHigh   = $highs[$i];
+            $currentLow    = $lows[$i];
             $previousClose = $closes[$i - 1];
-            $previousHigh = $highs[$i - 1];
-            $previousLow = $lows[$i - 1];
+            $previousHigh  = $highs[$i - 1];
+            $previousLow   = $lows[$i - 1];
 
             $tr = max(
                 $currentHigh - $currentLow,
@@ -163,21 +163,21 @@ class Calculate
             $trueRanges[] = $tr;
 
             $positiveDM = ($currentHigh - $previousHigh > $previousLow - $currentLow && $currentHigh - $previousHigh > 0)
-                ? $currentHigh - $previousHigh : 0;
+            ? $currentHigh - $previousHigh : 0;
             $negativeDM = ($previousLow - $currentLow > $currentHigh - $previousHigh && $previousLow - $currentLow > 0)
-                ? $previousLow - $currentLow : 0;
+            ? $previousLow - $currentLow : 0;
 
-            $plusDM[] = $positiveDM;
+            $plusDM[]  = $positiveDM;
             $minusDM[] = $negativeDM;
         }
 
         // Step 2: Smooth TR, +DM, and -DM using Wilder's smoothing technique (EMAs)
-        $smoothedTR = end(self::EMAs($trueRanges, $period));
-        $smoothedPlusDM = end(self::EMAs($plusDM, $period));
+        $smoothedTR      = end(self::EMAs($trueRanges, $period));
+        $smoothedPlusDM  = end(self::EMAs($plusDM, $period));
         $smoothedMinusDM = end(self::EMAs($minusDM, $period));
 
         // Step 3: Calculate +DI, -DI
-        $plusDI = ($smoothedTR > 0) ? ($smoothedPlusDM / $smoothedTR) * 100 : 0;
+        $plusDI  = ($smoothedTR > 0) ? ($smoothedPlusDM / $smoothedTR) * 100 : 0;
         $minusDI = ($smoothedTR > 0) ? ($smoothedMinusDM / $smoothedTR) * 100 : 0;
 
         // Step 4: Calculate DX

@@ -108,7 +108,6 @@ class FetchVolumesWebSocket extends Command
             ->take(119)
             ->get()->reverse()->values();
 
-
         $closePrices = $recentData->pluck('close')->toArray();
         $volumes     = $recentData->pluck('last_volume')->toArray();
         $highs       = $recentData->pluck('high')->toArray();
@@ -146,15 +145,15 @@ class FetchVolumesWebSocket extends Command
                 'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
                     'atr'                => Calculate::ATR($highs, $lows, $closePrices),
-                    'macd_line'       => $macd15mData['macd_line'],
-                    'signal_line'     => $macd15mData['signal_line'],
-                    'histogram'       => $macd15mData['histogram'],
+                    'macd_line'          => $macd15mData['macd_line'],
+                    'signal_line'        => $macd15mData['signal_line'],
+                    'histogram'          => $macd15mData['histogram'],
                     'previous_histogram' => $previousHistogram,
                     'rsi'                => Calculate::RSI($closePrices),
-                    'adx'               => $adxData['adx'],
-                    '+di'               => $adxData['+di'],
-                    '-di'               => $adxData['-di'],
-                    
+                    'adx'                => $adxData['adx'],
+                    '+di'                => $adxData['+di'],
+                    '-di'                => $adxData['-di'],
+
                 ],
             ]
         );

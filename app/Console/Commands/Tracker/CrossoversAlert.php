@@ -8,7 +8,6 @@ use App\Models\VolumeData;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class CrossoversAlert extends Command
 {
@@ -43,16 +42,16 @@ class CrossoversAlert extends Command
 
         // Fetch recent EMA data
         $recentData = VolumeData::with('crypto.alerts')
-        ->whereIn('crypto_id', $topCryptos)
-        ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
-        ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
-        ->get();
+            ->whereIn('crypto_id', $topCryptos)
+            ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
+            ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
+            ->get();
 
         $newCrossovers = [];
 
         /**
-        * @var VolumeData $data
-        */
+         * @var VolumeData $data
+         */
         foreach ($recentData as $data) {
             $currentTrend = $this->determineTrend($data);
 
@@ -64,18 +63,18 @@ class CrossoversAlert extends Command
             if ($currentTrend !== $previousTrend && $currentTrend != 'neutral') {
                 $crossover = [
                     'crypto'         => $crypto,
-                    'trend'  => $currentTrend,
+                    'trend'          => $currentTrend,
                     'previous_trend' => $previousTrend,
-                    'ema_15' => $data->price_ema_15,
-                    'ema_25' => $data->price_ema_25,
-                    'ema_50' => $data->price_ema_50,
-                    'price' => $data->close,
-                    'timestamp' => $data->timestamp,
-                    'atr'       => $data->getNormalizedAtr(),
-                    'macd_line' => $data->meta->get('macd_line'),
-                    'signal_line' => $data->meta->get('signal_line'),
-                    'histogram' => $data->meta->get('histogram'),
-                    'rsi' => $data->meta->get('rsi'),
+                    'ema_15'         => $data->price_ema_15,
+                    'ema_25'         => $data->price_ema_25,
+                    'ema_50'         => $data->price_ema_50,
+                    'price'          => $data->close,
+                    'timestamp'      => $data->timestamp,
+                    'atr'            => $data->getNormalizedAtr(),
+                    'macd_line'      => $data->meta->get('macd_line'),
+                    'signal_line'    => $data->meta->get('signal_line'),
+                    'histogram'      => $data->meta->get('histogram'),
+                    'rsi'            => $data->meta->get('rsi'),
                     'entry'          => $data->latest_price,
                 ] + $this->setup($data, $currentTrend);
 
@@ -104,24 +103,23 @@ class CrossoversAlert extends Command
     }
 
     /**
-    * Determine the current trend based on Volume-Weighted MACD, RSI, and ATR values.
-    *
-    * @param VolumeData $data
-    * @return string 'bullish', 'bearish', or 'neutral'
-    */
+     * Determine the current trend based on Volume-Weighted MACD, RSI, and ATR values.
+     *
+     * @param VolumeData $data
+     * @return string 'bullish', 'bearish', or 'neutral'
+     */
     protected function determineTrend(VolumeData $data): string
     {
         // $normalizedAtr = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
 
-
         // Retrieve VW-MACD data
-        $macdLine   = $data->meta->get('macd_line');
-        $signalLine = $data->meta->get('signal_line');
-        $histogram  = $data->meta->get('histogram');
+        $macdLine          = $data->meta->get('macd_line');
+        $signalLine        = $data->meta->get('signal_line');
+        $histogram         = $data->meta->get('histogram');
         $previousHistogram = $data->meta->get('previous_histogram');
 
-        $adx = $data->meta->get('adx');
-        $plusDI = $data->meta->get('+di');
+        $adx     = $data->meta->get('adx');
+        $plusDI  = $data->meta->get('+di');
         $minusDI = $data->meta->get('-di');
 
         // Retrieve RSI
@@ -183,7 +181,7 @@ class CrossoversAlert extends Command
     protected function formatAlertMessage(array $crossover): string
     {
         $trend = strtoupper($crossover['trend']);
-        
+
         return sprintf(
             "*#%s*\nTrend: %s\n\n"
             . "MACD Line: %s\nMACD Signal: %s\nMACD Histogram: %s\n\n"
@@ -226,7 +224,7 @@ class CrossoversAlert extends Command
 
         // Split the message by individual alerts (based on new lines for each alert)
         $alerts = explode("\n\n", trim($message)); // Assuming each alert is separated by two newlines
-        $chunk = "";
+        $chunk  = "";
         $chunks = [];
 
         foreach ($alerts as $alert) {
@@ -236,7 +234,7 @@ class CrossoversAlert extends Command
             } else {
                 // Store the current chunk and start a new one
                 $chunks[] = $chunk;
-                $chunk = $alert;
+                $chunk    = $alert;
             }
         }
 
@@ -249,8 +247,8 @@ class CrossoversAlert extends Command
             foreach ($chunks as $chunkMessage) {
                 $this->httpClient->post($url, [
                     'json' => [
-                        'chat_id' => $this->telegramChatId,
-                        'text' => $chunkMessage,
+                        'chat_id'    => $this->telegramChatId,
+                        'text'       => $chunkMessage,
                         'parse_mode' => 'Markdown',
                     ],
                 ]);
@@ -262,19 +260,19 @@ class CrossoversAlert extends Command
 
     protected function setup($data, $trend)
     {
-        if($trend == 'bullish') {
+        if ($trend == 'bullish') {
             return [
-                'stop_loss'      => $data->latest_price - (1.5 * $data->meta->get('atr')),
-                'tp1'            => $data->latest_price + (1 * $data->meta->get('atr')),
-                'tp2'            => $data->latest_price + (2 * $data->meta->get('atr')),
-                'tp3'            => $data->latest_price + (3 * $data->meta->get('atr')),
+                'stop_loss' => $data->latest_price - (1.5 * $data->meta->get('atr')),
+                'tp1'       => $data->latest_price + (1 * $data->meta->get('atr')),
+                'tp2'       => $data->latest_price + (2 * $data->meta->get('atr')),
+                'tp3'       => $data->latest_price + (3 * $data->meta->get('atr')),
             ];
         } else {
             return [
-                'stop_loss'      => $data->latest_price + (1.5 * $data->meta->get('atr')),
-                'tp1'            => $data->latest_price - (1 * $data->meta->get('atr')),
-                'tp2'            => $data->latest_price - (2 * $data->meta->get('atr')),
-                'tp3'            => $data->latest_price - (3 * $data->meta->get('atr')),
+                'stop_loss' => $data->latest_price + (1.5 * $data->meta->get('atr')),
+                'tp1'       => $data->latest_price - (1 * $data->meta->get('atr')),
+                'tp2'       => $data->latest_price - (2 * $data->meta->get('atr')),
+                'tp3'       => $data->latest_price - (3 * $data->meta->get('atr')),
             ];
         }
     }
