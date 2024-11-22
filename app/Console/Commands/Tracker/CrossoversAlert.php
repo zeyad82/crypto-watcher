@@ -131,34 +131,39 @@ class CrossoversAlert extends Command
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
-        if(env('LOG_ALERTS')) {
+        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40;
+        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 55;
+
+        if (env('LOG_ALERTS')) {
             Log::info('trend check', [
-                'crypto' => $data->crypto->base_asset,
-                'adx' => $adx,
-                'plusDI' => $plusDI,
-                'minusDI' => $minusDI,
-                'rsi' => $rsi,
-                'macdLine' => $macdLine,
-                'signalLine' => $signalLine,
-                'histogram' => $histogram,
+                'crypto'            => $data->crypto->base_asset,
+                'adx'               => $adx,
+                'plusDI'            => $plusDI,
+                'minusDI'           => $minusDI,
+                'rsi'               => $rsi,
+                'macdLine'          => $macdLine,
+                'signalLine'        => $signalLine,
+                'histogram'         => $histogram,
                 'previousHistogram' => $previousHistogram,
-                'bullishMCAD' => $macdLine > $signalLine,
-                'momentumUp' => $momentumUp,
-                'bullishRSI' => $rsi < 40,
-                'bullishDI' =>  $plusDI > $minusDI,
-                'bearishMCAD' => $macdLine < $signalLine,
-                'momentumDown' => $momentumDown,
-                'bearishRSI' => $rsi > 55,
-                'bearishDI' => $minusDI > $plusDI,
+                'bullish'           => $bullish,
+                'bullishMCAD'       => $macdLine > $signalLine,
+                'momentumUp'        => $momentumUp,
+                'bullishRSI'        => $rsi < 40,
+                'bullishDI'         => $plusDI > $minusDI,
+                'bearish'           => $bearish,
+                'bearishMCAD'       => $macdLine < $signalLine,
+                'momentumDown'      => $momentumDown,
+                'bearishRSI'        => $rsi > 55,
+                'bearishDI'         => $minusDI > $plusDI,
             ]);
         }
 
         // Include ADX confirmation for trend strength
         if ($adx > 25) {
-            if ($macdLine > $signalLine && $momentumUp && $rsi < 40) {
+            if ($bullish) {
                 return 'bullish';
             }
-            if ($macdLine < $signalLine && $momentumDown && $rsi > 55) {
+            if ($bearish) {
                 return 'bearish';
             }
         }
