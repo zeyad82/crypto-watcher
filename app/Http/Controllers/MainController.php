@@ -17,9 +17,9 @@ class MainController extends Controller
     public function test()
     {
 
-        $recentData = VolumeData::where('crypto_id', 139)
+        $recentData = VolumeData::where('crypto_id', 1)
             ->orderBy('timestamp', 'desc')
-            ->where('timestamp', '<', '2024-11-21 15:20:00')
+            ->where('timestamp', '<', '2024-11-22 06:15:00')
             ->take(120)
             ->get()->reverse()->values();
 
@@ -30,31 +30,20 @@ class MainController extends Controller
 
         $macd15mData = Calculate::MACD($closePrices);
 
-        // Calculate 1-hour
-        $hourlyClosePrices = [];
-        foreach ($recentData as $row) {
-            // Get the timestamp of the row
-            $rowTimestamp = Carbon::parse($row['timestamp']);
 
-            // Check if it's the last 15m period in an hour (e.g., 09:45, 10:45, ...)
-            if ($rowTimestamp->minute === 45) {
-                $hourlyClosePrices[] = (float)$row['close'];
-            }
-        }
-
-        $macd1hData = Calculate::MACD($hourlyClosePrices);
+        $adxData = Calculate::ADX($highs, $lows, $closePrices, 14);
 
         $result = [
             'macd_line'       => $macd15mData['macd_line'],
             'signal_line'     => $macd15mData['signal_line'],
             'histogram'       => $macd15mData['histogram'],
             'rsi'                => Calculate::RSI($closePrices),
-            '1h_macd_line'    => $macd1hData['macd_line'],
-            '1h_signal_line'  => $macd1hData['signal_line'],
-            '1h_histogram'    => $macd1hData['histogram'],
+            'adx'                => $adxData['adx'],
+            '+di'                => $adxData['+di'],
+            '-di'                => $adxData['-di'],
         ];
 
-        dd($recentData->toJson(), json_encode($result));
+        dd('result', json_encode($result));
 
     }
 }

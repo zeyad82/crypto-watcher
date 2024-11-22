@@ -140,20 +140,21 @@ class Calculate
     public static function ADX(array $highs, array $lows, array $closes, int $period = 14): array
     {
         if (count($highs) < $period + 1 || count($lows) < $period + 1 || count($closes) < $period + 1) {
-            return ['adx' => 0, '+di' => 0, '-di' => 0]; // Not enough data
+            return ['adx' => 0, '+di' => 0, '-di' => 0];
         }
 
         $trueRanges = [];
-        $plusDM     = [];
-        $minusDM    = [];
+        $plusDM = [];
+        $minusDM = [];
+        $dxHistory = [];
 
         // Step 1: Calculate TR, +DM, and -DM
         for ($i = 1; $i < count($highs); $i++) {
-            $currentHigh   = $highs[$i];
-            $currentLow    = $lows[$i];
+            $currentHigh = $highs[$i];
+            $currentLow = $lows[$i];
             $previousClose = $closes[$i - 1];
-            $previousHigh  = $highs[$i - 1];
-            $previousLow   = $lows[$i - 1];
+            $previousHigh = $highs[$i - 1];
+            $previousLow = $lows[$i - 1];
 
             $tr = max(
                 $currentHigh - $currentLow,
@@ -163,31 +164,52 @@ class Calculate
             $trueRanges[] = $tr;
 
             $positiveDM = ($currentHigh - $previousHigh > $previousLow - $currentLow && $currentHigh - $previousHigh > 0)
-            ? $currentHigh - $previousHigh : 0;
+                ? $currentHigh - $previousHigh : 0;
             $negativeDM = ($previousLow - $currentLow > $currentHigh - $previousHigh && $previousLow - $currentLow > 0)
-            ? $previousLow - $currentLow : 0;
+                ? $previousLow - $currentLow : 0;
 
-            $plusDM[]  = $positiveDM;
+            $plusDM[] = $positiveDM;
             $minusDM[] = $negativeDM;
         }
 
-        // Step 2: Smooth TR, +DM, and -DM using Wilder's smoothing technique (EMAs)
-        $smoothedTR      = end(self::EMAs($trueRanges, $period));
-        $smoothedPlusDM  = end(self::EMAs($plusDM, $period));
-        $smoothedMinusDM = end(self::EMAs($minusDM, $period));
+        // Step 2: Smooth TR, +DM, and -DM
+        $smoothedTRValues = self::EMAs($trueRanges, $period);
+        $smoothedPlusDMValues = self::EMAs($plusDM, $period);
+        $smoothedMinusDMValues = self::EMAs($minusDM, $period);
+
+        if (empty($smoothedTRValues) || empty($smoothedPlusDMValues) || empty($smoothedMinusDMValues)) {
+            return ['adx' => 0, '+di' => 0, '-di' => 0];
+        }
+
+        $smoothedTR = end($smoothedTRValues);
+        $smoothedPlusDM = end($smoothedPlusDMValues);
+        $smoothedMinusDM = end($smoothedMinusDMValues);
 
         // Step 3: Calculate +DI, -DI
-        $plusDI  = ($smoothedTR > 0) ? ($smoothedPlusDM / $smoothedTR) * 100 : 0;
+        $plusDI = ($smoothedTR > 0) ? ($smoothedPlusDM / $smoothedTR) * 100 : 0;
         $minusDI = ($smoothedTR > 0) ? ($smoothedMinusDM / $smoothedTR) * 100 : 0;
 
         // Step 4: Calculate DX
-        $dx = ($plusDI + $minusDI > 0) ? abs($plusDI - $minusDI) / ($plusDI + $minusDI) * 100 : 0;
+        for ($i = 0; $i < count($smoothedPlusDMValues); $i++) {
+            $currentPlusDI = ($smoothedTR > 0) ? ($smoothedPlusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
+            $currentMinusDI = ($smoothedTR > 0) ? ($smoothedMinusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
+            $dx = ($currentPlusDI + $currentMinusDI > 0) ? abs($currentPlusDI - $currentMinusDI) / ($currentPlusDI + $currentMinusDI) * 100 : 0;
+            $dxHistory[] = $dx;
+        }
+
+        if (count($dxHistory) < $period) {
+            return ['adx' => 0, '+di' => round($plusDI, 2), '-di' => round($minusDI, 2)];
+        }
 
         // Step 5: Smooth DX to calculate ADX
-        $adx = self::EMAs([$dx], $period);
+        $adxValues = self::EMAs($dxHistory, $period);
+
+        if (empty($adxValues)) {
+            return ['adx' => 0, '+di' => round($plusDI, 2), '-di' => round($minusDI, 2)];
+        }
 
         return [
-            'adx' => round(end($adx), 2),
+            'adx' => round(end($adxValues), 2),
             '+di' => round($plusDI, 2),
             '-di' => round($minusDI, 2),
         ];
