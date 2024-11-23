@@ -53,10 +53,10 @@ class UpdateAlertResults extends Command
                 } elseif ($alert->lowest_price <= $alert->stop_loss) {
                     if($alert->result === 1) {
                         $alert->result = -11;
-                    }
-
-                    if($alert->result === 2) {
+                    } elseif($alert->result === 2) {
                         $alert->result = -2;
+                    } else {
+                        $alert->result = -1;
                     }
 
                     $alert->status = 'closed';
@@ -76,10 +76,10 @@ class UpdateAlertResults extends Command
                 } elseif ($alert->highest_price >= $alert->stop_loss) {
                     if($alert->result === 1) {
                         $alert->result = -11;
-                    }
-
-                    if($alert->result === 2) {
+                    } elseif($alert->result === 2) {
                         $alert->result = -2;
+                    } else {
+                        $alert->result = -1;
                     }
 
                     $alert->status = 'closed';

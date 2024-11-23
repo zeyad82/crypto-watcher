@@ -27,9 +27,16 @@ class AlertPerformance extends Command
     public function handle(): void
     {
         // Fetch all crypto symbols
-        $cryptos = Crypto::with('alerts')->get();
+        $cryptos = Crypto::with(['alerts' => function($alerts) {
+            $alerts->where('status', 'closed');
+        }])->get();
 
-        $data = [];
+        $data           = [];
+        $totalAlertsAll = 0;
+        $totalTP1Hits   = 0;
+        $totalTP2Hits   = 0;
+        $totalTP3Hits   = 0;
+        $totalSLHits    = 0;
 
         foreach ($cryptos as $crypto) {
             $totalAlerts = $crypto->alerts->count();
@@ -51,6 +58,13 @@ class AlertPerformance extends Command
                     'SL (%)'       => number_format(($slHits / $totalAlerts) * 100, 2),
                     'Winning Rate' => number_format($winningRate, 2),
                 ];
+
+                // Aggregate totals for the summary row
+                $totalAlertsAll += $totalAlerts;
+                $totalTP1Hits += $tp1Hits;
+                $totalTP2Hits += $tp2Hits;
+                $totalTP3Hits += $tp3Hits;
+                $totalSLHits += $slHits;
             }
         }
 
@@ -59,10 +73,24 @@ class AlertPerformance extends Command
             return;
         }
 
+        // Add the total result row
+        $totalWinningRate = (($totalTP1Hits + $totalTP2Hits + $totalTP3Hits) / $totalAlertsAll) * 100;
+
+        $data[] = [
+            'Symbol'       => 'TOTAL',
+            'Signals'      => $totalAlertsAll,
+            'TP1 (%)'      => number_format(($totalTP1Hits / $totalAlertsAll) * 100, 2),
+            'TP2 (%)'      => number_format(($totalTP2Hits / $totalAlertsAll) * 100, 2),
+            'TP3 (%)'      => number_format(($totalTP3Hits / $totalAlertsAll) * 100, 2),
+            'SL (%)'       => number_format(($totalSLHits / $totalAlertsAll) * 100, 2),
+            'Winning Rate' => number_format($totalWinningRate, 2),
+        ];
+
         // Display the data in a table format
         $this->table(
             ['Symbol', 'Signals', 'TP1 (%)', 'TP2 (%)', 'TP3 (%)', 'SL (%)', 'Winning Rate'],
             $data
         );
     }
+
 }

@@ -33,7 +33,7 @@ class VolumesAlert extends Command
         $this->info('Tracking new volume spikes...');
 
         // Fetch all cryptos ordered by 24-hour volume
-        $allCryptos = Crypto::orderByDesc('volume24')->take(120)->get();
+        $allCryptos = Crypto::orderByDesc('volume24')->get();
 
         $this->rank = [
             'top20' => $allCryptos->take(20)->pluck('id')->toArray(),
@@ -182,5 +182,7 @@ class VolumesAlert extends Command
         if(in_array($cryptoId, $this->rank['top120'])) {
             return 3;
         }
+
+        return 4;
     }
 }

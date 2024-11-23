@@ -77,6 +77,8 @@ class CrossoversAlert extends Command
                     'histogram'      => $data->meta->get('histogram'),
                     'rsi'            => $data->meta->get('rsi'),
                     'adx'            => $data->meta->get('adx'),
+                    '+di'            => $data->meta->get('+di'),
+                    '-di'            => $data->meta->get('-di'),
                     'entry'          => $data->latest_price,
                 ] + $this->setup($data, $currentTrend);
 
@@ -131,8 +133,8 @@ class CrossoversAlert extends Command
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
-        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40;
-        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 55;
+        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40 && $plusDI > $minusDI;
+        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 55 && $minusDI > $plusDI;
 
         if (env('LOG_ALERTS')) {
             Log::info('trend check', [
