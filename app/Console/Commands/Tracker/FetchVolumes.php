@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class FetchVolumes extends Command
 {
-    protected $signature   = 'tracker:fetch-volumes {cryptos?}';
+    protected $signature   = 'tracker:fetch-volumes {cryptos?} {--timeframe=}';
     protected $description = 'Fetch volume data and store 120 candles as history for future WebSocket use.';
 
     protected $exchange;
@@ -32,6 +32,8 @@ class FetchVolumes extends Command
         $batchSize = 400; // Fetch data for 400 cryptos in a batch
         $this->info("Fetching volume data for {$batchSize} cryptos...");
 
+        $timeframe = $this->option('timeframe') ?: '15m';
+
         try {
             $cryptos = Crypto::orderBy('last_fetched', 'asc')
                 ->when($this->argument('cryptos'), function($cryptos) {
@@ -50,8 +52,9 @@ class FetchVolumes extends Command
 
             foreach ($cryptos as $crypto) {
                 try {
-                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, '15m', null, 120);
-                    if (count($ohlcv) < 120) {
+                    $ohlcv = $this->exchange->fetch_ohlcv($crypto->symbol, $timeframe, null, 50);
+
+                    if (count($ohlcv) < 50) {
                         Log::warning("Insufficient candle data for {$crypto->symbol}");
                         $progressBar->advance();
                         continue;
@@ -75,6 +78,7 @@ class FetchVolumes extends Command
                             [
                                 'crypto_id' => $crypto->id,
                                 'timestamp' => $timestamp,
+                                'timeframe' => $timeframe
                             ],
                             [
                                 'open'         => $open,

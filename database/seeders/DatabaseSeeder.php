@@ -15,9 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        if(! Schema::hasColumn('cryptos', 'volume24')) {
-            Schema::table('cryptos', function (Blueprint $table) {
-                $table->decimal('volume24', 20, 8)->nullable()->after('quote_asset');
+        if(! Schema::hasColumn('volume_data', 'price_change')) {
+            Schema::table('volume_data', function (Blueprint $table) {
+                $table->integer('price_change')->nullable()->after('latest_price');
+                $table->string('timeframe')->default('15m')->index()->after('price_change');
+
             });
         }
 

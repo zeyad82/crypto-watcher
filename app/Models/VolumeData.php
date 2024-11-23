@@ -17,6 +17,8 @@ class VolumeData extends Model
         'close',        // Close price for the candle
         'last_volume',  // Volume for the candle
         'latest_price', // The latest price (usually the same as close)
+        'price_change',
+        'timeframe',
         'vma_15',       // 15-period ma for volume
         'vma_25',       // 25-period ma for volume
         'vma_50',       // 50-period ma for volume

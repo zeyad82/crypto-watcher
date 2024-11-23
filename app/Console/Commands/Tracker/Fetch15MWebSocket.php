@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\Artisan;
 use Ratchet\Client\Connector;
 use React\EventLoop\Loop;
 
-class FetchVolumesWebSocket extends Command
+class Fetch15MWebSocket extends Command
 {
-    protected $signature   = 'tracker:fetch-volumes-websocket';
+    protected $signature   = 'tracker:fetch-15m-websocket';
     protected $description = 'Fetch volume data in real-time using Binance WebSocket.';
 
     public function handle()
@@ -27,22 +27,24 @@ class FetchVolumesWebSocket extends Command
 
         // Filter cryptos with insufficient volume data
         $insufficientDataCryptos = [];
-        foreach ($topCryptos as $crypto) {
-            $minTimestamp = Carbon::now()->subMinutes(119 * 15);
-            $count        = VolumeData::where('crypto_id', $crypto->id)
-                ->where('timestamp', '>=', $minTimestamp)
-                ->count();
 
-            if ($count < 119) {
-                $insufficientDataCryptos[] = $crypto->id;
-            }
-        }
+        // foreach ($topCryptos as $crypto) {
+        //     $minTimestamp = Carbon::now()->subMinutes(49 * 15);
+        //     $count        = VolumeData::where('crypto_id', $crypto->id)
+        //         ->where('timeframe', '15m')
+        //         ->where('timestamp', '>=', $minTimestamp)
+        //         ->count();
 
-        if (!empty($insufficientDataCryptos)) {
-            Artisan::queue('tracker:fetch-volumes', [
-                'cryptos' => $insufficientDataCryptos,
-            ]);
-        }
+        //     if ($count < 49) {
+        //         $insufficientDataCryptos[] = $crypto->id;
+        //     }
+        // }
+
+        // if (!empty($insufficientDataCryptos)) {
+        //     Artisan::queue('tracker:fetch-volumes', [
+        //         'cryptos' => $insufficientDataCryptos,
+        //     ]);
+        // }
 
         // Connect to Binance WebSocket for the remaining cryptos
         $cryptoSymbols = $topCryptos->whereNotIn('symbol', $insufficientDataCryptos)->pluck('symbol')->toArray();
@@ -105,7 +107,7 @@ class FetchVolumesWebSocket extends Command
 
         $recentData = VolumeData::where('crypto_id', $crypto->id)
             ->orderBy('timestamp', 'desc')
-            ->take(119)
+            ->take(49)
             ->get()->reverse()->values();
 
         $closePrices = $recentData->pluck('close')->toArray();
@@ -120,6 +122,11 @@ class FetchVolumesWebSocket extends Command
 
         $macd15mData = Calculate::MACD($closePrices);
 
+        $previousClose = $recentData->last()?->close ?? $close; 
+        $priceChange = $previousClose != 0 
+            ? (($close - $previousClose) / $previousClose) * 100 
+            : 0;
+
         $previousHistogram = $recentData->last()?->meta['histogram'] ?? 0;
 
         // Calculate ADX, +DI, and -DI
@@ -129,6 +136,7 @@ class FetchVolumesWebSocket extends Command
             [
                 'crypto_id' => $crypto->id,
                 'timestamp' => $timestamp,
+                'timeframe' => '15m' 
             ],
             [
                 'open'         => $open,
@@ -137,6 +145,7 @@ class FetchVolumesWebSocket extends Command
                 'close'        => $close,
                 'last_volume'  => $volume,
                 'latest_price' => $close,
+                'price_change' => round($priceChange, 2),
                 'vma_15'       => Calculate::MA($volumes, 15),
                 'vma_25'       => Calculate::MA($volumes, 25),
                 'vma_50'       => Calculate::MA($volumes, 50),

@@ -20,6 +20,8 @@ return new class extends Migration
             $table->decimal('close', 40, 8)->nullable(); // Close price
             $table->decimal('last_volume', 40, 8)->nullable(); // Volume for the candle
             $table->decimal('latest_price', 40, 8)->nullable(); // Latest price (close price)
+            $table->float('price_change')->nullable();
+            $table->string('timeframe')->default('15m')->index();
             
             // MA fields for volume
             $table->decimal('vma_15', 40, 8)->nullable(); // 15-period MA for volume

@@ -43,6 +43,7 @@ class CrossoversAlert extends Command
 
         // Fetch recent EMA data
         $recentData = VolumeData::with('crypto.alerts')
+            ->where('timeframe', '15m')
             ->whereIn('crypto_id', $topCryptos)
             ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
             ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
@@ -134,7 +135,7 @@ class CrossoversAlert extends Command
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
         $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40 && $plusDI > $minusDI;
-        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 55 && $minusDI > $plusDI;
+        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 75 && $minusDI > $plusDI;
 
         if (env('LOG_ALERTS')) {
             Log::info('trend check', [
@@ -155,7 +156,7 @@ class CrossoversAlert extends Command
                 'bearish'           => $bearish,
                 'bearishMCAD'       => $macdLine < $signalLine,
                 'momentumDown'      => $momentumDown,
-                'bearishRSI'        => $rsi > 55,
+                'bearishRSI'        => $rsi > 75,
                 'bearishDI'         => $minusDI > $plusDI,
             ]);
         }

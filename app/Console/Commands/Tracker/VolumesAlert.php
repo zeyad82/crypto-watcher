@@ -43,6 +43,7 @@ class VolumesAlert extends Command
 
         // Fetch recent volume data
         $recentData = VolumeData::with('crypto')
+        ->where('timeframe', '15m')
         ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
         ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
         ->get();
