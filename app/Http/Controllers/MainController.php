@@ -12,9 +12,7 @@ class MainController extends Controller
 {
     public function index()
     {
-        Artisan::call('tracker:fetch-1m-websocket');
-
-        // $this->test();
+        return view('index');
     }
 
     public function test()

@@ -216,8 +216,8 @@ class Calculate
 
         // Step 4: Calculate DX
         for ($i = 0; $i < count($smoothedPlusDMValues); $i++) {
-            $currentPlusDI  = ($smoothedTR > 0) ? ($smoothedPlusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
-            $currentMinusDI = ($smoothedTR > 0) ? ($smoothedMinusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
+            $currentPlusDI  = ($smoothedTRValues[$i] > 0) ? ($smoothedPlusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
+            $currentMinusDI = ($smoothedTRValues[$i] > 0) ? ($smoothedMinusDMValues[$i] / $smoothedTRValues[$i]) * 100 : 0;
             $dx             = ($currentPlusDI + $currentMinusDI > 0) ? abs($currentPlusDI - $currentMinusDI) / ($currentPlusDI + $currentMinusDI) * 100 : 0;
             $dxHistory[]    = $dx;
         }

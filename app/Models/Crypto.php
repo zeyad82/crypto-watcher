@@ -21,6 +21,18 @@ class Crypto extends Model
         return $this->hasMany(Alert::class);
     }
 
+    public function latest1m()
+    {
+        return $this->hasOne(VolumeData::class)->where('timeframe', '1m')
+        ->latest('timestamp');
+    }
+
+    public function latest15m()
+    {
+        return $this->hasOne(VolumeData::class)->where('timeframe', '15m')
+        ->latest('timestamp');
+    }
+
     /**
      * Get the attributes that should be cast.
      *

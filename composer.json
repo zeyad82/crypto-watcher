@@ -9,6 +9,7 @@
         "ccxt/ccxt": "^1.53",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",
+        "livewire/livewire": "^3.5",
         "ratchet/pawl": "^0.4.1",
         "react/event-loop": "^1.5"
     },
