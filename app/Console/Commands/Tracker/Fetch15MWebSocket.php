@@ -21,33 +21,9 @@ class Fetch15MWebSocket extends Command
         $this->info('Connecting to Binance WebSocket...');
 
         // Fetch top 120 cryptos by volume
-        $topCryptos = Crypto::orderByDesc('volume24')
-            ->take(120)
-            ->get();
-
-        // Filter cryptos with insufficient volume data
-        $insufficientDataCryptos = [];
-
-        // foreach ($topCryptos as $crypto) {
-        //     $minTimestamp = Carbon::now()->subMinutes(49 * 15);
-        //     $count        = VolumeData::where('crypto_id', $crypto->id)
-        //         ->where('timeframe', '15m')
-        //         ->where('timestamp', '>=', $minTimestamp)
-        //         ->count();
-
-        //     if ($count < 49) {
-        //         $insufficientDataCryptos[] = $crypto->id;
-        //     }
-        // }
-
-        // if (!empty($insufficientDataCryptos)) {
-        //     Artisan::queue('tracker:fetch-volumes', [
-        //         'cryptos' => $insufficientDataCryptos,
-        //     ]);
-        // }
-
-        // Connect to Binance WebSocket for the remaining cryptos
-        $cryptoSymbols = $topCryptos->whereNotIn('symbol', $insufficientDataCryptos)->pluck('symbol')->toArray();
+        $cryptoSymbols = Crypto::orderByDesc('volume24')
+            ->get()
+            ->pluck('symbol')->toArray();
 
         if (empty($cryptoSymbols)) {
             $this->warn('No cryptos available for WebSocket connection. Exiting.');

@@ -17,6 +17,9 @@ class MainController extends Controller
 
     public function test()
     {
+        Artisan::call('tracker:crossovers-alert');
+
+        dd('ss');
 
         $recentData = VolumeData::where('crypto_id', 330)
             ->orderBy('timestamp', 'desc')

@@ -2,32 +2,132 @@
     <table class="table-auto w-full border-collapse border border-gray-200">
         <thead>
             <tr class="bg-gray-100">
-                <th class="border border-gray-200 px-4 py-2">Symbol</th>
-                <th class="border border-gray-200 px-4 py-2">Price</th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('symbol')">
+                    Symbol
+                    @if($sortColumn === 'symbol')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('latest_price_1m')">
+                    Price
+                    @if($sortColumn === 'latest_price_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
 
-                <th class="border border-gray-200 px-4 py-2">1m RSI</th>
-                <th class="border border-gray-200 px-4 py-2">15m RSI</th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('rsi_1m')">
+                    1m RSI
+                    @if($sortColumn === 'rsi_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('rsi_15m')">
+                    15m RSI
+                    @if($sortColumn === 'rsi_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
 
-                <th class="border border-gray-200 px-4 py-2">1m Volume</th>
-                <th class="border border-gray-200 px-4 py-2">15m Volume</th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('volume_1m')">
+                    1m Volume
+                    @if($sortColumn === 'volume_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('volume_15m')">
+                    15m Volume
+                    @if($sortColumn === 'volume_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
 
-                <th class="border border-gray-200 px-4 py-2">1m Price Change (%)</th>
-                <th class="border border-gray-200 px-4 py-2">15m Price Change (%)</th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('price_change_1m')">
+                    1m Price Change (%)
+                    @if($sortColumn === 'price_change_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('price_change_15m')">
+                    15m Price Change (%)
+                    @if($sortColumn === 'price_change_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
 
-                <th class="border border-gray-200 px-4 py-2">1m EMA 15</th>
-                <th class="border border-gray-200 px-4 py-2">1m EMA 25</th>
-                <th class="border border-gray-200 px-4 py-2">1m EMA 50</th>
-                <th class="border border-gray-200 px-4 py-2">15m EMA 15</th>
-                <th class="border border-gray-200 px-4 py-2">15m EMA 25</th>
-                <th class="border border-gray-200 px-4 py-2">15m EMA 50</th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema15_1m')">
+                    1m EMA 15
+                    @if($sortColumn === 'ema15_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema25_1m')">
+                    1m EMA 25
+                    @if($sortColumn === 'ema25_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema50_1m')">
+                    1m EMA 50
+                    @if($sortColumn === 'ema50_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema15_15m')">
+                    15m EMA 15
+                    @if($sortColumn === 'ema15_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema25_15m')">
+                    15m EMA 25
+                    @if($sortColumn === 'ema25_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema50_15m')">
+                    15m EMA 50
+                    @if($sortColumn === 'ema50_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
 
-                <th class="border border-gray-200 px-4 py-2">1m ADX</th>
-                <th class="border border-gray-200 px-4 py-2">1m +DI</th>
-                <th class="border border-gray-200 px-4 py-2">1m -DI</th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('adx_1m')">
+                    1m ADX
+                    @if($sortColumn === 'adx_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('+di_1m')">
+                    1m DI+
+                    @if($sortColumn === '+di_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('-di_1m')">
+                    1m DI-
+                    @if($sortColumn === '-di_1m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
 
-                <th class="border border-gray-200 px-4 py-2">15m ADX</th>
-                <th class="border border-gray-200 px-4 py-2">15m +DI</th>
-                <th class="border border-gray-200 px-4 py-2">15m -DI</th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('adx_15m')">
+                    15m ADX
+                    @if($sortColumn === 'adx_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('+di_15m')">
+                    15m DI+
+                    @if($sortColumn === '+di_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('-di_15m')">
+                    15m DI-
+                    @if($sortColumn === '-di_15m')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
             </tr>
         </thead>
         <tbody>

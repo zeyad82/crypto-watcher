@@ -36,18 +36,25 @@ class VolumesAlert extends Command
         $allCryptos = Crypto::orderByDesc('volume24')->get();
 
         $this->rank = [
-            'top20' => $allCryptos->take(20)->pluck('id')->toArray(),
-            'top50' => $allCryptos->slice(20, 30)->pluck('id')->toArray(),
+            'top20'  => $allCryptos->take(20)->pluck('id')->toArray(),
+            'top50'  => $allCryptos->slice(20, 30)->pluck('id')->toArray(),
             'top120' => $allCryptos->slice(50, 70)->pluck('id')->toArray(),
         ];
 
         // Fetch recent volume data
         $recentData = VolumeData::with('crypto')
-        ->where('timeframe', '15m')
-        ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
-        ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
-        ->get();
-
+            ->where('timeframe', '15m') // Ensure the outer query also checks the timeframe
+            ->joinSub(
+                VolumeData::select('crypto_id', VolumeData::raw('MAX(timestamp) AS latest_timestamp'))
+                    ->where('timeframe', '15m') // Only consider 15m timeframe for the subquery
+                    ->groupBy('crypto_id'),
+                'latest',
+                function ($join) {
+                    $join->on('volume_data.crypto_id', '=', 'latest.crypto_id')
+                        ->on('volume_data.timestamp', '=', 'latest.latest_timestamp');
+                }
+            )
+            ->get();
 
         $newSpikes = [];
 
@@ -63,21 +70,21 @@ class VolumesAlert extends Command
             }
 
             // Identify volume spikes
-            $isSpike = $data->last_volume > ($data->vma_15 * 2);
+            $isSpike          = $data->last_volume > ($data->vma_15 * 2);
             $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
 
-            if (! $isSpike || $amplitudePercent < $this->minPercent($crypto->id)) {
+            if (!$isSpike || $amplitudePercent < $this->minPercent($crypto->id)) {
                 continue;
             }
 
             $newSpikes[] = [
-                'crypto'    => $crypto,
-                'volume'    => $data->last_volume * $data->close,
-                'vma'       => $data->vma_15 * $data->close,
-                'price'     => $data->close,
-                'amplitude' => $amplitudePercent,
+                'crypto'       => $crypto,
+                'volume'       => $data->last_volume * $data->close,
+                'vma'          => $data->vma_15 * $data->close,
+                'price'        => $data->close,
+                'amplitude'    => $amplitudePercent,
                 'candle_color' => $data->close > $data->open ? 'green' : 'red',
-                'timestamp' => $data->timestamp,
+                'timestamp'    => $data->timestamp,
             ];
 
             // Update the last_volume_alert timestamp
@@ -121,7 +128,7 @@ class VolumesAlert extends Command
 
         // Split the message by individual alerts (based on new lines for each alert)
         $alerts = explode("\n\n", trim($message)); // Assuming each alert is separated by two newlines
-        $chunk = "";
+        $chunk  = "";
         $chunks = [];
 
         foreach ($alerts as $alert) {
@@ -131,7 +138,7 @@ class VolumesAlert extends Command
             } else {
                 // Store the current chunk and start a new one
                 $chunks[] = $chunk;
-                $chunk = $alert;
+                $chunk    = $alert;
             }
         }
 
@@ -144,8 +151,8 @@ class VolumesAlert extends Command
             foreach ($chunks as $chunkMessage) {
                 $this->httpClient->post($url, [
                     'json' => [
-                        'chat_id' => $this->telegramChatId,
-                        'text' => $chunkMessage,
+                        'chat_id'    => $this->telegramChatId,
+                        'text'       => $chunkMessage,
                         'parse_mode' => 'Markdown',
                     ],
                 ]);
@@ -172,15 +179,15 @@ class VolumesAlert extends Command
 
     protected function minPercent($cryptoId)
     {
-        if(in_array($cryptoId, $this->rank['top20'])) {
+        if (in_array($cryptoId, $this->rank['top20'])) {
             return 1;
         }
 
-        if(in_array($cryptoId, $this->rank['top50'])) {
+        if (in_array($cryptoId, $this->rank['top50'])) {
             return 2;
         }
 
-        if(in_array($cryptoId, $this->rank['top120'])) {
+        if (in_array($cryptoId, $this->rank['top120'])) {
             return 3;
         }
 

@@ -41,13 +41,26 @@ class CrossoversAlert extends Command
             return 0;
         }
 
-        // Fetch recent EMA data
+        // Fetch recent volume data
         $recentData = VolumeData::with('crypto.alerts')
-            ->where('timeframe', '15m')
-            ->whereIn('crypto_id', $topCryptos)
-            ->selectRaw('*, MAX(timestamp) OVER (PARTITION BY crypto_id) AS latest_timestamp')
-            ->whereRaw('timestamp = (SELECT MAX(timestamp) FROM volume_data v WHERE v.crypto_id = volume_data.crypto_id)')
+            ->whereIn('volume_data.crypto_id', $topCryptos)
+            ->where('timeframe', '15m') // Ensure the outer query also checks the timeframe
+            ->joinSub(
+                VolumeData::select('crypto_id', VolumeData::raw('MAX(timestamp) AS latest_timestamp'))
+                    ->where('timeframe', '15m') // Only consider 15m timeframe for the subquery
+                    ->groupBy('crypto_id'),
+                'latest',
+                function ($join) {
+                    $join->on('volume_data.crypto_id', '=', 'latest.crypto_id')
+                        ->on('volume_data.timestamp', '=', 'latest.latest_timestamp');
+                }
+            )
             ->get();
+
+        if(request('dd')) {
+            dd($recentData->pluck('timestamp'));
+        }
+
 
         $newCrossovers = [];
 
@@ -138,7 +151,7 @@ class CrossoversAlert extends Command
         $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 75 && $minusDI > $plusDI;
 
         if (env('LOG_ALERTS')) {
-            Log::info('trend check', [
+            Log::channel('observe')->info('trend check', [
                 'crypto'            => $data->crypto->base_asset,
                 'adx'               => $adx,
                 'plusDI'            => $plusDI,
