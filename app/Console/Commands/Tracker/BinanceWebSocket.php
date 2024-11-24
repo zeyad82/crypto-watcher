@@ -11,26 +11,34 @@ use Illuminate\Support\Facades\Artisan;
 use Ratchet\Client\Connector;
 use React\EventLoop\Loop;
 
-class Fetch15MWebSocket extends Command
+class BinanceWebSocket extends Command
 {
-    protected $signature   = 'tracker:fetch-15m-websocket';
+    protected $signature   = 'tracker:binance-websocket {timeframe?}';
     protected $description = 'Fetch volume data in real-time using Binance WebSocket.';
+
+    protected $timeframe;
 
     public function handle()
     {
+        $this->timeframe = $this->argument('timeframe') ?? '15m';
+
         $this->info('Connecting to Binance WebSocket...');
 
         // Fetch top 120 cryptos by volume
         $cryptoSymbols = Crypto::orderByDesc('volume24')
-            ->get()
-            ->pluck('symbol')->toArray();
+        ->get()
+        ->pluck('symbol')->toArray();
+
 
         if (empty($cryptoSymbols)) {
             $this->warn('No cryptos available for WebSocket connection. Exiting.');
             return 0;
         }
 
-        $streams = implode('/', array_map(fn($symbol) => str_replace('/', '', strtolower($symbol)) . '@kline_15m', $cryptoSymbols));
+        $streams = implode('/', array_map(
+            fn($symbol) => str_replace('/', '', strtolower($symbol)) . '@kline_' . $this->timeframe, 
+            $cryptoSymbols
+        ));
         $url     = "wss://stream.binance.com:9443/stream?streams=$streams";
 
         $loop      = Loop::get();
@@ -49,8 +57,7 @@ class Fetch15MWebSocket extends Command
                 });
 
                 $connection->on('close', function () {
-                    $this->warn('WebSocket connection closed. Reconnecting...');
-                    $this->handle();
+                    $this->warn('WebSocket connection closed.');
                 });
             },
             function ($error) {
@@ -82,7 +89,9 @@ class Fetch15MWebSocket extends Command
         $volume    = $kline['v'];
 
         $recentData = VolumeData::where('crypto_id', $crypto->id)
+            ->where('timeframe', $this->timeframe)
             ->orderBy('timestamp', 'desc')
+            ->where('timestamp', '!=', $timestamp)
             ->take(49)
             ->get()->reverse()->values();
 
@@ -96,7 +105,7 @@ class Fetch15MWebSocket extends Command
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
-        $macd15mData = Calculate::MACD($closePrices);
+        $macdData = Calculate::MACD($closePrices);
 
         $previousClose = $recentData->last()?->close ?? $close; 
         $priceChange = $previousClose != 0 
@@ -112,7 +121,7 @@ class Fetch15MWebSocket extends Command
             [
                 'crypto_id' => $crypto->id,
                 'timestamp' => $timestamp,
-                'timeframe' => '15m' 
+                'timeframe' => $this->timeframe 
             ],
             [
                 'open'         => $open,
@@ -130,9 +139,9 @@ class Fetch15MWebSocket extends Command
                 'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
                     'atr'                => Calculate::ATR($highs, $lows, $closePrices),
-                    'macd_line'          => $macd15mData['macd_line'],
-                    'signal_line'        => $macd15mData['signal_line'],
-                    'histogram'          => $macd15mData['histogram'],
+                    'macd_line'          => $macdData['macd_line'],
+                    'signal_line'        => $macdData['signal_line'],
+                    'histogram'          => $macdData['histogram'],
                     'previous_histogram' => $previousHistogram,
                     'rsi'                => Calculate::RSI($closePrices),
                     'adx'                => $adxData['adx'],
