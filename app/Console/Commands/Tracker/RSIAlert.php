@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 class RSIAlert extends Command
 {
     protected $signature   = 'tracker:rsi-alert';
-    protected $description = 'Track cryptos with RSI below 35 and send alerts to Telegram.';
+    protected $description = 'Track cryptos with RSI below 30 and send alerts to Telegram.';
     protected $telegramBotToken;
     protected $telegramChatId;
     protected $httpClient;
@@ -27,48 +27,54 @@ class RSIAlert extends Command
 
     public function handle()
     {
-        $this->info('Tracking cryptos with RSI below 40...');
+        $this->info('Tracking cryptos with RSI below 30...');
 
         // Define timeframes to check
         $timeframes = ['1m', '15m', '1h', '4h'];
 
-        foreach ($timeframes as $timeframe) {
-            // Fetch volume data for all cryptos, sorted by `volume24`
-            $recentData = VolumeData::with('crypto')
-                ->where('timeframe', $timeframe)
-                ->join('cryptos', 'volume_data.crypto_id', '=', 'cryptos.id')
-                ->orderByDesc('cryptos.volume24') // Sort by `volume24`
-                ->joinSub(
-                    VolumeData::select('crypto_id', VolumeData::raw('MAX(timestamp) AS latest_timestamp'))
-                        ->where('timeframe', $timeframe)
-                        ->groupBy('crypto_id'),
-                    'latest',
-                    function ($join) {
-                        $join->on('volume_data.crypto_id', '=', 'latest.crypto_id')
-                            ->on('volume_data.timestamp', '=', 'latest.latest_timestamp');
-                    }
-                )
-                ->get();
+        // Fetch the latest timestamp for each timeframe and crypto in a single query
+        $cryptos = Crypto::with('latest1m', 'latest15m', 'latest1h', 'latest4h')
+        ->orderByDesc('volume24')
+        ->get();
 
-            $alerts = [];
+        $alerts = [
+            '1m' => [],
+            '15m' => [],
+            '1h' => [],
+            '4h' => []
+        ];
 
-            foreach ($recentData as $data) {
+        /**
+         * @var Crypto $crypto
+         */
+        foreach ($cryptos as $crypto) {
+
+            foreach ($timeframes as $timeframe) {
+                $data = $crypto->{'latest' . $timeframe};
                 $rsi = $data->meta?->get('rsi');
 
-                if ($rsi !== null && $rsi < 35) {
-                    $alerts[] = [
-                        'crypto'    => $data->crypto,
-                        'rsi'       => $rsi,
-                        'price'     => $data->close,
-                        'timestamp' => $data->timestamp,
+                if ($rsi !== null && $rsi < 30) {
+                    $priceChanges = $this->getPriceChanges($crypto);
+                    $alerts[$timeframe][]     = [
+                        'crypto'       => $crypto,
+                        'rsi'          => $rsi,
+                        'price'        => $data->close,
+                        'price_change' => $priceChanges,
+                        'timeframe'    => $timeframe,
+                        'timestamp'    => $data->timestamp,
                     ];
                 }
             }
-
-            if (!empty($alerts)) {
-                $this->sendToTelegram($this->formatAlerts($timeframe, $alerts));
-            }
         }
+
+
+        foreach ($alerts as $timeframe => $timeframeAlerts) {
+            if (!empty($timeframeAlerts)) {
+                $this->sendToTelegram($this->formatAlerts($timeframe, $timeframeAlerts));
+            }
+
+        }
+
 
         $this->info('RSI alerts sent to Telegram.');
         return 0;
@@ -87,16 +93,41 @@ class RSIAlert extends Command
         $messages = [$header];
 
         foreach ($alerts as $alert) {
-            $messages[] = sprintf(
-                "#%s - RSI: %s\nPrice: %s USDT\nTime: %s",
+            $priceChanges = $alert['price_change'];
+            $messages[]   = sprintf(
+                "#%s - RSI: %s\nPrice: %s USDT\n15m Change: %s%%\n1h Change: %s%%\n4h Change: %s%%\nTime: %s",
                 strtoupper($alert['crypto']->symbol),
                 round($alert['rsi'], 2),
                 round($alert['price'], 8),
+                round($priceChanges['15m'], 2),
+                round($priceChanges['1h'], 2),
+                round($priceChanges['4h'], 2),
                 Carbon::parse($alert['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s')
             );
         }
 
         return implode("\n\n", $messages);
+    }
+
+    /**
+     * Fetch price changes for each crypto based on latest timestamps.
+     *
+     * @param int $cryptoId
+     * @param \Illuminate\Support\Collection $latestTimestamps
+     * @return array
+     */
+    protected function getPriceChanges(Crypto $crypto): array
+    {
+        $priceChanges = [];
+        $timeframes = ['15m', '1h', '4h'];
+
+        foreach ($timeframes as $timeframe) {
+            $data = $crypto->{'latest' . $timeframe};
+
+            $priceChanges[$timeframe] = $data ? $data->price_change : 0;
+        }
+
+        return $priceChanges;
     }
 
     /**

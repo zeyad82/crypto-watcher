@@ -17,7 +17,7 @@ class MainController extends Controller
 
     public function test()
     {
-        Artisan::call('tracker:crossovers-alert');
+        Artisan::call('tracker:rsi-alert');
 
         dd('ss');
 

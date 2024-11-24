@@ -33,6 +33,18 @@ class Crypto extends Model
         ->latest('timestamp');
     }
 
+    public function latest1h()
+    {
+        return $this->hasOne(VolumeData::class)->where('timeframe', '1h')
+        ->latest('timestamp');
+    }
+
+    public function latest4h()
+    {
+        return $this->hasOne(VolumeData::class)->where('timeframe', '4h')
+        ->latest('timestamp');
+    }
+
     /**
      * Get the attributes that should be cast.
      *
