@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\Tracker\Cleanup;
 use App\Console\Commands\Tracker\CrossoversAlert;
 use App\Console\Commands\Tracker\FetchCryptos;
 use App\Console\Commands\Tracker\VolumesAlert;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(FetchCryptos::class)->everyFifteenMinutes();
+Schedule::command(Cleanup::class)->hourly();
 
 Schedule::command(CrossoversAlert::class)->everyMinute();
 Schedule::command(VolumesAlert::class)->everyMinute();
