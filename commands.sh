@@ -7,6 +7,7 @@ pkill -f "php artisan" || echo "No previous processes to kill."
 commands=(
     "php artisan tracker:binance-websocket 1m"
     "php artisan tracker:binance-websocket 15m"
+    "php artisan tracker:binance-websocket 1h"
 )
 
 # Create logs directory if it doesn't exist

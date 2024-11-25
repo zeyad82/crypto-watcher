@@ -7,7 +7,6 @@ use App\Models\VolumeData;
 use App\Services\Calculate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Ratchet\Client\Connector;
 use React\EventLoop\Loop;
 
@@ -18,28 +17,32 @@ class BinanceWebSocket extends Command
 
     protected $timeframe;
 
+    protected $cryptos = [];
+
     public function handle()
     {
         $this->timeframe = $this->argument('timeframe') ?? '15m';
 
         $this->info('Connecting to Binance WebSocket...');
 
-        // Fetch top 120 cryptos by volume
-        $cryptoSymbols = Crypto::orderByDesc('volume24')
-        ->get()
-        ->pluck('symbol')->toArray();
+        // Fetch and cache all crypto symbols and their IDs in a normalized format
+        $this->cryptos = Crypto::pluck('id', 'symbol')->mapWithKeys(function ($id, $symbol) {
+            return [strtoupper(str_replace('/', '', $symbol)) => $id];
+        })->toArray();
 
-
-        if (empty($cryptoSymbols)) {
+        if (empty($this->cryptos)) {
             $this->warn('No cryptos available for WebSocket connection. Exiting.');
             return 0;
         }
 
-        $streams = implode('/', array_map(
-            fn($symbol) => str_replace('/', '', strtolower($symbol)) . '@kline_' . $this->timeframe, 
+        // Prepare streams
+        $cryptoSymbols = array_keys($this->cryptos);
+        $streams       = implode('/', array_map(
+            fn($symbol) => strtolower($symbol) . '@kline_' . $this->timeframe,
             $cryptoSymbols
         ));
-        $url     = "wss://stream.binance.com:9443/stream?streams=$streams";
+
+        $url = "wss://stream.binance.com:9443/stream?streams=$streams";
 
         $loop      = Loop::get();
         $connector = new Connector($loop);
@@ -67,14 +70,15 @@ class BinanceWebSocket extends Command
 
         $loop->run();
     }
-
     protected function processKlineData(array $data)
     {
-        $symbol = strtoupper(explode('@', $data['s'])[0]);
+        // Normalize WebSocket symbol format to match cached data
+        $symbol = strtoupper($data['s']); // WebSocket sends uppercase symbols like BTCUSDT
 
-        $crypto = Crypto::where('base_asset', str_replace('USDT', '', $symbol))->first();
+        // Get the crypto ID from the cached cryptos property
+        $cryptoId = $this->cryptos[$symbol] ?? null;
 
-        if (!$crypto) {
+        if (!$cryptoId) {
             $this->warn("Crypto not found: $symbol");
             return;
         }
@@ -88,12 +92,12 @@ class BinanceWebSocket extends Command
         $close     = $kline['c'];
         $volume    = $kline['v'];
 
-        $recentData = VolumeData::where('crypto_id', $crypto->id)
+        $recentData = VolumeData::where('crypto_id', $cryptoId)
             ->where('timeframe', $this->timeframe)
             ->orderBy('timestamp', 'desc')
             ->where('timestamp', '!=', $timestamp)
             ->take(49)
-            ->get()->reverse()->values();
+            ->get()->reverse();
 
         $closePrices = $recentData->pluck('close')->toArray();
         $volumes     = $recentData->pluck('last_volume')->toArray();
@@ -107,10 +111,10 @@ class BinanceWebSocket extends Command
 
         $macdData = Calculate::MACD($closePrices);
 
-        $previousClose = $recentData->last()?->close ?? $close; 
-        $priceChange = $previousClose != 0 
-            ? (($close - $previousClose) / $previousClose) * 100 
-            : 0;
+        $previousClose = $recentData->last()?->close ?? $close;
+        $priceChange   = $previousClose != 0
+        ? (($close - $previousClose) / $previousClose) * 100
+        : 0;
 
         $previousHistogram = $recentData->last()?->meta['histogram'] ?? 0;
 
@@ -119,9 +123,9 @@ class BinanceWebSocket extends Command
 
         VolumeData::updateOrCreate(
             [
-                'crypto_id' => $crypto->id,
+                'crypto_id' => $cryptoId,
                 'timestamp' => $timestamp,
-                'timeframe' => $this->timeframe 
+                'timeframe' => $this->timeframe,
             ],
             [
                 'open'         => $open,
@@ -151,7 +155,5 @@ class BinanceWebSocket extends Command
                 ],
             ]
         );
-
-        $this->info("Processed kline for {$crypto->symbol} at {$timestamp}");
     }
 }
