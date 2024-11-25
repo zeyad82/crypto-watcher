@@ -29,7 +29,7 @@ class Cleanup extends Command
     {
         VolumeData::where('timeframe', '1m')->where('timestamp', '<', Carbon::now()->subMinutes(70))->delete();
         VolumeData::where('timeframe', '15m')->where('timestamp', '<', Carbon::now()->subHours(15))->delete();
-        VolumeData::where('timeframe', '1h')->where('timestamp', '<', Carbon::now()->subHours(55))->delete();
-        VolumeData::where('timeframe', '4h')->where('timestamp', '<', Carbon::now()->subHours(55 * 4))->delete();
+        // VolumeData::where('timeframe', '1h')->delete();
+        // VolumeData::where('timeframe', '4h')->delete();
     }
 }

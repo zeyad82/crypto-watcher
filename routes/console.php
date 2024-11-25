@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(FetchCryptos::class)->everyFifteenMinutes();
-Schedule::command(Cleanup::class)->hourly();
+Schedule::command(Cleanup::class)->everyThirtyMinutes();
 
-Schedule::command(RSIAlert::class)->everyMinute();
+// Schedule::command(RSIAlert::class)->everyMinute();
 Schedule::command(CrossoversAlert::class)->everyMinute();
 Schedule::command(VolumesAlert::class)->everyMinute();
 Schedule::command(UpdateAlertResults::class)->everyMinute();
