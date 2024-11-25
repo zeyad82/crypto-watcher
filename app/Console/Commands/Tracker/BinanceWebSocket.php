@@ -47,15 +47,27 @@ class BinanceWebSocket extends Command
         $loop      = Loop::get();
         $connector = new Connector($loop);
 
+        // Buffer for 1m timeframe
+        $buffer = [];
+
         $connector($url)->then(
-            function ($connection) use ($loop) {
+            function ($connection) use ($loop, &$buffer) {
                 $this->info('Connected to Binance WebSocket.');
 
-                $connection->on('message', function ($message) {
+                // Collect messages in the buffer
+                $connection->on('message', function ($message) use (&$buffer) {
                     $data = json_decode($message, true);
 
                     if (isset($data['data'])) {
-                        $this->processKlineData($data['data']);
+                        $buffer[] = $data['data'];
+                    }
+                });
+
+                // Add a periodic timer to process the buffer every 10 seconds
+                $loop->addPeriodicTimer(10, function () use (&$buffer) {
+                    if (!empty($buffer)) {
+                        $this->processBufferedData($buffer);
+                        $buffer = []; // Clear the buffer after processing
                     }
                 });
 
@@ -70,6 +82,7 @@ class BinanceWebSocket extends Command
 
         $loop->run();
     }
+
     protected function processKlineData(array $data)
     {
         // Normalize WebSocket symbol format to match cached data
@@ -156,4 +169,12 @@ class BinanceWebSocket extends Command
             ]
         );
     }
+
+    protected function processBufferedData(array $buffer)
+    {
+        foreach ($buffer as $data) {
+            $this->processKlineData($data);
+        }
+    }
+
 }
