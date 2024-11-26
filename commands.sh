@@ -51,5 +51,5 @@ done
 # Run the scheduled command every 60 seconds in the background
 nohup bash -c "run_command_every_60_seconds_in_background 'php artisan schedule:run'" >/dev/null 2>>"logs/php_artisan_schedule:run_error.log" &
 
-echo "All commands are running in the background. Error logs are available in the 'logs' folder."
+echo "All commands are running in the background."
 exit 0

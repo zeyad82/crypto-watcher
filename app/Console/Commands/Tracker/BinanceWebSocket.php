@@ -5,6 +5,7 @@ namespace App\Console\Commands\Tracker;
 use App\Models\Crypto;
 use App\Models\VolumeData;
 use App\Services\Calculate;
+use Cache;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Ratchet\Client\Connector;
@@ -105,12 +106,15 @@ class BinanceWebSocket extends Command
         $close     = $kline['c'];
         $volume    = $kline['v'];
 
-        $recentData = VolumeData::where('crypto_id', $cryptoId)
-            ->where('timeframe', $this->timeframe)
-            ->orderBy('timestamp', 'desc')
-            ->where('timestamp', '!=', $timestamp)
-            ->take(49)
-            ->get()->reverse();
+        $recentData = Cache::remember($this->timeframe . $cryptoId . $timestamp, $this->cacheTime(), function () use ($cryptoId, $timestamp) {
+            return VolumeData::where('crypto_id', $cryptoId)
+                ->where('timeframe', $this->timeframe)
+                ->orderBy('timestamp', 'desc')
+                ->where('timestamp', '!=', $timestamp)
+                ->take(49)
+                ->get()->reverse();
+
+        });
 
         $closePrices = $recentData->pluck('close')->toArray();
         $volumes     = $recentData->pluck('last_volume')->toArray();
@@ -175,6 +179,17 @@ class BinanceWebSocket extends Command
         foreach ($buffer as $data) {
             $this->processKlineData($data);
         }
+    }
+
+    protected function cacheTime()
+    {
+        $times = [
+            '1m'  => 61,
+            '15m' => 15 * 60 + 1,
+            '1h'  => 60 * 60 + 1,
+        ];
+
+        return $times[$this->timeframe];
     }
 
 }
