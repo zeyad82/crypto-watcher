@@ -3,10 +3,10 @@
 namespace App\Console\Commands\Tracker;
 
 use App\Models\Crypto;
-use App\Models\VolumeData;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 class RSIAlert extends Command
 {
@@ -27,54 +27,52 @@ class RSIAlert extends Command
 
     public function handle()
     {
-        $this->info('Tracking cryptos with RSI below 30...');
-
         // Define timeframes to check
-        $timeframes = ['1m', '15m', '1h', '4h'];
+        $timeframes = ['1m', '15m', '1h'];
 
         // Fetch the latest timestamp for each timeframe and crypto in a single query
-        $cryptos = Crypto::with('latest1m', 'latest15m', 'latest1h', 'latest4h')
-        ->orderByDesc('volume24')
-        ->get();
+        $cryptos = Crypto::with('latest1m', 'latest15m', 'latest1h')
+            ->orderByDesc('volume24')
+            ->take(5)
+            ->get();
 
-        $alerts = [
-            // '1m' => [],
-            '15m' => [],
-            '1h' => [],
-            // '4h' => []
-        ];
+        $alerts = [];
 
         /**
          * @var Crypto $crypto
          */
         foreach ($cryptos as $crypto) {
+            $overSold = [];
 
             foreach ($timeframes as $timeframe) {
                 $data = $crypto->{'latest' . $timeframe};
+
                 $rsi = $data->meta?->get('rsi');
 
-                if ($rsi !== null && $rsi < 30) {
-                    $priceChanges = $this->getPriceChanges($crypto);
-                    $alerts[$timeframe][]     = [
-                        'crypto'       => $crypto,
-                        'rsi'          => $rsi,
-                        'price'        => $data->close,
-                        'price_change' => $priceChanges,
-                        'timeframe'    => $timeframe,
-                        'timestamp'    => $data->timestamp,
-                    ];
+                if ($rsi !== null && $rsi < 35) {
+                    $overSold[] = true;
                 }
             }
-        }
 
-
-        foreach ($alerts as $timeframe => $timeframeAlerts) {
-            if (!empty($timeframeAlerts)) {
-                $this->sendToTelegram($this->formatAlerts($timeframe, $timeframeAlerts));
+            if (count($overSold) === 3 && !Cache::has("alerted_crypto_{$crypto->id}")) {
+                $metrics  = $this->getMetrics($crypto);
+                $alerts[] = [
+                    'crypto'    => $crypto,
+                    'price'     => $crypto->latest1m->close,
+                    'metrics'   => $metrics,
+                    'ema_15'    => $crypto->latest1h->price_ema_15,
+                    'ema_25'    => $crypto->latest1h->price_ema_25,
+                    'ema_50'    => $crypto->latest1h->price_ema_50,
+                    'timestamp' => $data->timestamp,
+                ];
             }
 
+            Cache::put("alerted_crypto_{$crypto->id}", true, now()->addMinutes(30));
         }
 
+        foreach ($alerts as $alert) {
+            $this->sendToTelegram($this->formatAlerts($alert));
+        }
 
         $this->info('RSI alerts sent to Telegram.');
         return 0;
@@ -83,30 +81,34 @@ class RSIAlert extends Command
     /**
      * Format alerts for Telegram for a specific timeframe.
      *
-     * @param string $timeframe
      * @param array $alerts
      * @return string
      */
-    protected function formatAlerts(string $timeframe, array $alerts): string
+    protected function formatAlerts(array $alert): string
     {
-        $header   = sprintf("*RSI %s*", strtoupper($timeframe));
-        $messages = [$header];
+        $msg = sprintf(
+            "#%s \nPrice: %s USDT\n\n" .
+            "RSI 1m: %s\nRSI 15m: %s\nRSI 1h: %s\n\n" .
+            "EMA15: %s\nEMA25: %s\nEMA50: %s\n\n" .
+            "1m Change: %s%%\n15m Change: %s%%\n1h Change: %s%%\nTime: %s \n\n",
+            strtoupper($alert['crypto']->symbol),
+            round($alert['price'], 8),
 
-        foreach ($alerts as $alert) {
-            $priceChanges = $alert['price_change'];
-            $messages[]   = sprintf(
-                "#%s - RSI: %s\nPrice: %s USDT\n15m Change: %s%%\n1h Change: %s%%\n4h Change: %s%%\nTime: %s",
-                strtoupper($alert['crypto']->symbol),
-                round($alert['rsi'], 2),
-                round($alert['price'], 8),
-                round($priceChanges['15m'], 2),
-                round($priceChanges['1h'], 2),
-                round($priceChanges['4h'], 2),
-                Carbon::parse($alert['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s')
-            );
-        }
+            round($alert['metrics']['RSIs']['1m'], 2),
+            round($alert['metrics']['RSIs']['15m'], 2),
+            round($alert['metrics']['RSIs']['1h'], 2),
 
-        return implode("\n\n", $messages);
+            round($alert['ema_15'], 8),
+            round($alert['ema_25'], 8),
+            round($alert['ema_50'], 8),
+
+            round($alert['metrics']['price_changes']['1m'], 2),
+            round($alert['metrics']['price_changes']['15m'], 2),
+            round($alert['metrics']['price_changes']['1h'], 2),
+            Carbon::parse($alert['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s')
+        );
+
+        return $msg;
     }
 
     /**
@@ -116,18 +118,23 @@ class RSIAlert extends Command
      * @param \Illuminate\Support\Collection $latestTimestamps
      * @return array
      */
-    protected function getPriceChanges(Crypto $crypto): array
+    protected function getMetrics(Crypto $crypto): array
     {
         $priceChanges = [];
-        $timeframes = ['15m', '1h', '4h'];
+        $RSIs         = [];
+        $timeframes   = ['1m', '15m', '1h'];
 
         foreach ($timeframes as $timeframe) {
             $data = $crypto->{'latest' . $timeframe};
 
-            $priceChanges[$timeframe] = $data ? $data->price_change : 0;
+            $priceChanges[$timeframe] = $data->price_change ?? 0;
+            $RSIs[$timeframe]         = $data->meta->get('rsi') ?? 0;
         }
 
-        return $priceChanges;
+        return [
+            'price_changes' => $priceChanges,
+            'RSIs'          => $RSIs,
+        ];
     }
 
     /**

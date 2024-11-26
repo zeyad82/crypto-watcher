@@ -23,25 +23,25 @@ class Crypto extends Model
 
     public function latest1m()
     {
-        return $this->hasOne(VolumeData::class)->where('timeframe', '1m')
+        return $this->hasOne(VolumeData::class)->withDefault()->where('timeframe', '1m')
         ->latest('timestamp');
     }
 
     public function latest15m()
     {
-        return $this->hasOne(VolumeData::class)->where('timeframe', '15m')
+        return $this->hasOne(VolumeData::class)->withDefault()->where('timeframe', '15m')
         ->latest('timestamp');
     }
 
     public function latest1h()
     {
-        return $this->hasOne(VolumeData::class)->where('timeframe', '1h')
+        return $this->hasOne(VolumeData::class)->withDefault()->where('timeframe', '1h')
         ->latest('timestamp');
     }
 
     public function latest4h()
     {
-        return $this->hasOne(VolumeData::class)->where('timeframe', '4h')
+        return $this->hasOne(VolumeData::class)->withDefault()->where('timeframe', '4h')
         ->latest('timestamp');
     }
 
