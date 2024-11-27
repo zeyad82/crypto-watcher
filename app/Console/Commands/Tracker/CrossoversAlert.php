@@ -33,7 +33,6 @@ class CrossoversAlert extends Command
 
         // Fetch the top 120 cryptos by 24-hour trading volume
         $topCryptos = Crypto::orderByDesc('volume24')
-            ->take(120)
             ->pluck('id');
 
         if ($topCryptos->isEmpty()) {
@@ -42,7 +41,7 @@ class CrossoversAlert extends Command
         }
 
         // Fetch recent volume data
-        $recentData = VolumeData::with('crypto.alerts')
+        $recentData = VolumeData::with('crypto.alerts', 'crypto.latest1h')
             ->whereIn('volume_data.crypto_id', $topCryptos)
             ->where('timeframe', '15m') // Ensure the outer query also checks the timeframe
             ->joinSub(
@@ -136,6 +135,9 @@ class CrossoversAlert extends Command
         $histogram         = $data->meta->get('histogram');
         $previousHistogram = $data->meta->get('previous_histogram');
 
+        $macdLine1H        = $data->crypto->latest1h->meta->get('macd_line');
+        $signalLine1H      = $data->crypto->latest1h->meta->get('signal_line');
+
         $adx     = $data->meta->get('adx');
         $plusDI  = $data->meta->get('+di');
         $minusDI = $data->meta->get('-di');
@@ -147,8 +149,8 @@ class CrossoversAlert extends Command
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
-        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40 && $plusDI > $minusDI;
-        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 75 && $minusDI > $plusDI;
+        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40 && $macdLine1H > $signalLine1H ;
+        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 75 && $macdLine1H < $signalLine1H;
 
         if (env('LOG_ALERTS')) {
             Log::channel('observe')->info('trend check', [
