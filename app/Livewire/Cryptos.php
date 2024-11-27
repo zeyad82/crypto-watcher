@@ -27,7 +27,7 @@ class Cryptos extends Component
     {
         $cryptos = Crypto::orderByDesc('volume24')
             ->with('latest1m', 'latest15m', 'latest1h') // Eager load the required data
-            ->take(80)
+            ->take(200)
             ->get();
 
         $data = $cryptos->map(function ($crypto) {

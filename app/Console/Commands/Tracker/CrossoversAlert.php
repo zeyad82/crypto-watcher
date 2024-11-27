@@ -149,8 +149,8 @@ class CrossoversAlert extends Command
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
-        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40 && $macdLine1H > $signalLine1H ;
-        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 75 && $macdLine1H < $signalLine1H;
+        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 45 && $macdLine1H > $signalLine1H ;
+        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 65 && $macdLine1H < $signalLine1H;
 
         if (env('LOG_ALERTS')) {
             Log::channel('observe')->info('trend check', [
