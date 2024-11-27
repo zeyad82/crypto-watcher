@@ -75,40 +75,16 @@
                     @endif
                 </th>
 
-                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema15_15m')">
-                    15m EMA 15
-                    @if($sortColumn === 'ema15_15m')
-                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
-                    @endif
-                </th>
-                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema25_15m')">
-                    15m EMA 25
-                    @if($sortColumn === 'ema25_15m')
-                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
-                    @endif
-                </th>
-                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema50_15m')">
-                    15m EMA 50
-                    @if($sortColumn === 'ema50_15m')
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('15m_ema_trend')">
+                    15m EMA Trend
+                    @if($sortColumn === '15m_ema_trend')
                         @if($sortDirection === 'asc') ↑ @else ↓ @endif
                     @endif
                 </th>
 
-                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema15_1h')">
-                    1h EMA 15
-                    @if($sortColumn === 'ema15_1h')
-                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
-                    @endif
-                </th>
-                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema25_1h')">
-                    1h EMA 25
-                    @if($sortColumn === 'ema25_1h')
-                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
-                    @endif
-                </th>
-                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('ema50_1h')">
-                    1h EMA 50
-                    @if($sortColumn === 'ema50_1h')
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('1h_ema_trend')">
+                    1h EMA Trend
+                    @if($sortColumn === '1h_ema_trend')
                         @if($sortDirection === 'asc') ↑ @else ↓ @endif
                     @endif
                 </th>
@@ -133,13 +109,8 @@
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['price_change_1h'] }}</td>
 
                     
-                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['ema15_15m'] }}</td>
-                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['ema25_15m'] }}</td>
-                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['ema50_15m'] }}</td>
-
-                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['ema15_1h'] }}</td>
-                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['ema25_1h'] }}</td>
-                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['ema50_1h'] }}</td>
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['15m_ema_trend'] }}</td>
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['1h_ema_trend'] }}</td>
                 </tr>
             @empty
                 <tr>

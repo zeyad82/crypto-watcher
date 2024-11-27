@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Crypto;
+use App\Models\VolumeData;
 use Livewire\Component;
 
 class Cryptos extends Component
@@ -32,20 +33,19 @@ class Cryptos extends Component
         $data = $cryptos->map(function ($crypto) {
             $latest1m  = $crypto->latest1m;
             $latest15m = $crypto->latest15m;
-            $latest1h = $crypto->latest1h;
+            $latest1h  = $crypto->latest1h;
 
             $rawVolume1m  = $latest1m->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume15m = $latest15m->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume1h  = $latest1h->last_volume * $latest1m->latest_price ?? 0;
-
 
             return [
                 'symbol'           => $crypto->symbol,
                 'latest_price_1m'  => $latest1m->latest_price ?? 0,
                 'rsi_1m'           => $latest1m->meta['rsi'] ?? 0,
                 'rsi_15m'          => $latest15m->meta['rsi'] ?? 0,
-                'rsi_1h'          => $latest1h->meta['rsi'] ?? 0,
-                
+                'rsi_1h'           => $latest1h->meta['rsi'] ?? 0,
+
                 'raw_volume_1m'    => $rawVolume1m,
                 'volume_1m'        => $this->formatNumber($rawVolume1m),
 
@@ -54,18 +54,13 @@ class Cryptos extends Component
 
                 'raw_volume_1h'    => $rawVolume1h,
                 'volume_1h'        => $this->formatNumber($rawVolume1h),
-                
+
                 'price_change_1m'  => $latest1m->price_change ?? 0,
                 'price_change_15m' => $latest15m->price_change ?? 0,
-                'price_change_1h' => $latest1h->price_change ?? 0,
+                'price_change_1h'  => $latest1h->price_change ?? 0,
 
-                'ema15_15m'        => $latest15m->price_ema_15 ?? 0,
-                'ema25_15m'        => $latest15m->price_ema_25 ?? 0,
-                'ema50_15m'        => $latest15m->price_ema_50 ?? 0,
-                
-                'ema15_1h'        => $latest1h->price_ema_15 ?? 0,
-                'ema25_1h'        => $latest1h->price_ema_25 ?? 0,
-                'ema50_1h'        => $latest1h->price_ema_50 ?? 0,
+                '15m_ema_trend'    => $this->getTrend($latest15m),
+                '1h_ema_trend'     => $this->getTrend($latest1h),
             ];
         });
 
@@ -74,9 +69,8 @@ class Cryptos extends Component
 
         // Determine if the column being sorted has a raw counterpart
         $sortColumn = in_array($this->sortColumn, $columnsWithRawValues)
-            ? "raw_{$this->sortColumn}" // Use raw value for sorting
-            : $this->sortColumn; // Use original column
-
+        ? "raw_{$this->sortColumn}"// Use raw value for sorting
+        : $this->sortColumn; // Use original column
 
         // Sort the data based on the selected column and direction
         return $data->sortBy(
@@ -101,5 +95,20 @@ class Cryptos extends Component
             return round($number / 1_000, 2) . 'K';
         }
         return $number;
+    }
+
+    protected function getTrend(VolumeData $data)
+    {
+        if (!$data->price_ema_15 || !$data->price_ema_25) {
+            return 'empty';
+        }
+
+        if ($data->price_ema_15 > $data->price_ema_25) {
+            return 'bullish';
+        }
+
+        if ($data->price_ema_15 < $data->price_ema_25) {
+            return 'bearish';
+        }
     }
 }
