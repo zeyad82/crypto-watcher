@@ -10,11 +10,11 @@ class UpdateAlertResults extends Command
 {
     protected $signature    = 'alerts:update-results';
     protected $description  = 'Update the results and statuses of active alerts based on price movements.';
-    private static $tickers = null; // Cached tickers for efficiency
+    private static $tickers = null;
 
     public function handle()
     {
-        $openAlerts = Alert::where('status', 'open')->get();
+        $openAlerts = Alert::whereIn('status', ['open', 'partial'])->get();
 
         if ($openAlerts->isEmpty()) {
             $this->info('No open alerts to update.');

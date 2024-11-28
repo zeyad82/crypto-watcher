@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Tracker;
 
 use App\Models\Crypto;
+use App\Models\VolumeData;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
@@ -33,9 +34,9 @@ class RSIAlert extends Command
         // Fetch the latest timestamp for each timeframe and crypto in a single query
         $cryptos = Crypto::with('latest1m', 'latest15m', 'latest1h')
             ->orderByDesc('volume24')
-            ->take(5)
+            ->take(100)
             ->get();
-
+        
         $alerts = [];
 
         /**
@@ -49,25 +50,28 @@ class RSIAlert extends Command
 
                 $rsi = $data->meta?->get('rsi');
 
-                if ($rsi !== null && $rsi < 35) {
+                if ($rsi !== null && $rsi < 50) {
                     $overSold[] = true;
                 }
             }
 
-            if (count($overSold) === 3 && !Cache::has("alerted_crypto_{$crypto->id}")) {
+            if (count($overSold) == 3 && !Cache::has("alerted_crypto_{$crypto->id}")) {
                 $metrics  = $this->getMetrics($crypto);
                 $alerts[] = [
                     'crypto'    => $crypto,
                     'price'     => $crypto->latest1m->close,
                     'metrics'   => $metrics,
-                    'ema_15'    => $crypto->latest1h->price_ema_15,
-                    'ema_25'    => $crypto->latest1h->price_ema_25,
-                    'ema_50'    => $crypto->latest1h->price_ema_50,
+
+                    '1m_ema_trend'    => $this->getTrend($crypto->latest1m),
+                    '15m_ema_trend'    => $this->getTrend($crypto->latest15m),
+                    '1h_ema_trend'     => $this->getTrend($crypto->latest1h),
+
                     'timestamp' => $data->timestamp,
                 ];
+
+                Cache::put("alerted_crypto_{$crypto->id}", true, now()->addMinutes(30));
             }
 
-            Cache::put("alerted_crypto_{$crypto->id}", true, now()->addMinutes(30));
         }
 
         foreach ($alerts as $alert) {
@@ -89,7 +93,7 @@ class RSIAlert extends Command
         $msg = sprintf(
             "#%s \nPrice: %s USDT\n\n" .
             "RSI 1m: %s\nRSI 15m: %s\nRSI 1h: %s\n\n" .
-            "EMA15: %s\nEMA25: %s\nEMA50: %s\n\n" .
+            "1m EMA : %s\n15m EMA: %s\n1h EMA: %s\n\n" .
             "1m Change: %s%%\n15m Change: %s%%\n1h Change: %s%%\nTime: %s \n\n",
             strtoupper($alert['crypto']->symbol),
             round($alert['price'], 8),
@@ -98,9 +102,9 @@ class RSIAlert extends Command
             round($alert['metrics']['RSIs']['15m'], 2),
             round($alert['metrics']['RSIs']['1h'], 2),
 
-            round($alert['ema_15'], 8),
-            round($alert['ema_25'], 8),
-            round($alert['ema_50'], 8),
+            $alert['1m_ema_trend'],
+            $alert['15m_ema_trend'],
+            $alert['1h_ema_trend'],
 
             round($alert['metrics']['price_changes']['1m'], 2),
             round($alert['metrics']['price_changes']['15m'], 2),
@@ -156,6 +160,21 @@ class RSIAlert extends Command
             ]);
         } catch (\Exception $e) {
             $this->error("Failed to send Telegram alert: " . $e->getMessage());
+        }
+    }
+
+    protected function getTrend(VolumeData $data)
+    {
+        if (!$data->price_ema_15 || !$data->price_ema_25) {
+            return 'empty';
+        }
+
+        if ($data->price_ema_15 > $data->price_ema_25) {
+            return 'bullish';
+        }
+
+        if ($data->price_ema_15 < $data->price_ema_25) {
+            return 'bearish';
         }
     }
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Stop all previous PHP Artisan processes
-pkill -f "php artisan" || echo "No previous processes to kill."
+pkill -f "artisan" || echo "No previous processes to kill."
 
 # Define commands that run indefinitely
 commands=(
