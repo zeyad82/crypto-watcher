@@ -50,7 +50,7 @@ class RSIAlert extends Command
 
                 $rsi = $data->meta?->get('rsi');
 
-                if ($rsi !== null && $rsi < 50) {
+                if ($rsi !== null && $rsi < 40) {
                     $overSold[] = true;
                 }
             }
