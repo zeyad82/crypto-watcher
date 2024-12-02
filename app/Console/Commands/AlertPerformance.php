@@ -26,9 +26,9 @@ class AlertPerformance extends Command
      */
     public function handle(): void
     {
-        // Fetch all crypto symbols
-        $cryptos = Crypto::with(['alerts' => function($alerts) {
-            $alerts->where('status', 'closed');
+        $cryptos = Crypto::with(['alerts' => function ($alerts) {
+            $alerts->where('status', 'closed')
+                ->orderBy('created_at', 'desc'); 
         }])->get();
 
         $data           = [];
@@ -49,14 +49,18 @@ class AlertPerformance extends Command
 
                 $winningRate = (($tp1Hits + $tp2Hits + $tp3Hits) / $totalAlerts) * 100;
 
+                // Get the last alert time
+                $lastAlertTime = $crypto->alerts->first()->created_at->format('Y-m-d H:i:s');
+
                 $data[] = [
                     'Symbol'       => $crypto->symbol,
                     'Signals'      => $totalAlerts,
-                    'TP1 (%)'      => number_format(($tp1Hits / $totalAlerts) * 100, 2),
+                    'TP1 (%)' => number_format(($tp1Hits / $totalAlerts) * 100, 2),
                     'TP2 (%)'      => number_format(($tp2Hits / $totalAlerts) * 100, 2),
                     'TP3 (%)'      => number_format(($tp3Hits / $totalAlerts) * 100, 2),
                     'SL (%)'       => number_format(($slHits / $totalAlerts) * 100, 2),
                     'Winning Rate' => number_format($winningRate, 2),
+                    'Last Alert'   => $lastAlertTime, // Include last alert time in the data
                 ];
 
                 // Aggregate totals for the summary row
@@ -73,22 +77,28 @@ class AlertPerformance extends Command
             return;
         }
 
+        // Sort data by Last Alert time (descending)
+        usort($data, function ($a, $b) {
+            return strtotime($a['Last Alert']) <=> strtotime($b['Last Alert']);
+        });
+
         // Add the total result row
         $totalWinningRate = (($totalTP1Hits + $totalTP2Hits + $totalTP3Hits) / $totalAlertsAll) * 100;
 
         $data[] = [
             'Symbol'       => 'TOTAL',
             'Signals'      => $totalAlertsAll,
-            'TP1 (%)'      => number_format(($totalTP1Hits / $totalAlertsAll) * 100, 2),
+            'TP1 (%)' => number_format(($totalTP1Hits / $totalAlertsAll) * 100, 2),
             'TP2 (%)'      => number_format(($totalTP2Hits / $totalAlertsAll) * 100, 2),
             'TP3 (%)'      => number_format(($totalTP3Hits / $totalAlertsAll) * 100, 2),
             'SL (%)'       => number_format(($totalSLHits / $totalAlertsAll) * 100, 2),
             'Winning Rate' => number_format($totalWinningRate, 2),
+            'Last Alert'   => '-', // Total row doesn't need a last alert
         ];
 
         // Display the data in a table format
         $this->table(
-            ['Symbol', 'Signals', 'TP1 (%)', 'TP2 (%)', 'TP3 (%)', 'SL (%)', 'Winning Rate'],
+            ['Symbol', 'Signals', 'TP1 (%)', 'TP2 (%)', 'TP3 (%)', 'SL (%)', 'Winning Rate', 'Last Alert'],
             $data
         );
     }
