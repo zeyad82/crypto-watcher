@@ -26,14 +26,15 @@ class Cryptos extends Component
     public function loadCryptoData()
     {
         $cryptos = Crypto::orderByDesc('volume24')
-            ->with('latest1m', 'latest15m', 'latest1h') // Eager load the required data
-            ->take(200)
+            ->with('latest1m', 'latest15m', 'latest1h', 'latest4h') // Eager load the required data
+            // ->take(200)
             ->get();
 
         $data = $cryptos->map(function ($crypto) {
             $latest1m  = $crypto->latest1m;
             $latest15m = $crypto->latest15m;
             $latest1h  = $crypto->latest1h;
+            $latest4h  = $crypto->latest4h;
 
             $rawVolume1m  = $latest1m->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume15m = $latest15m->last_volume * $latest1m->latest_price ?? 0;
@@ -45,6 +46,8 @@ class Cryptos extends Component
                 'rsi_1m'           => $latest1m->meta['rsi'] ?? 0,
                 'rsi_15m'          => $latest15m->meta['rsi'] ?? 0,
                 'rsi_1h'           => $latest1h->meta['rsi'] ?? 0,
+
+                'entry_score'      => $latest4h->meta['entry_score'] ?? 0,
 
                 'raw_volume_1m'    => $rawVolume1m,
                 'volume_1m'        => $this->formatNumber($rawVolume1m),
@@ -61,6 +64,7 @@ class Cryptos extends Component
 
                 '15m_ema_trend'    => $this->getTrend($latest15m),
                 '1h_ema_trend'     => $this->getTrend($latest1h),
+                '4h_ema_trend'     => $this->getTrend($latest4h),
             ];
         });
 

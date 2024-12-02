@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\Tracker\BinanceWebSocket;
 use App\Console\Commands\Tracker\Cleanup;
 use App\Console\Commands\Tracker\CrossoversAlert;
 use App\Console\Commands\Tracker\FetchCryptos;
@@ -18,3 +19,6 @@ Schedule::command(RSIAlert::class)->everyMinute();
 Schedule::command(CrossoversAlert::class)->everyMinute();
 Schedule::command(VolumesAlert::class)->everyMinute();
 Schedule::command(UpdateAlertResults::class)->everyMinute();
+
+Schedule::command(BinanceWebSocket::class, ['4h', '--once'])
+->hourlyAt(1);

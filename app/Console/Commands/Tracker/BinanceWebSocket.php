@@ -13,20 +13,22 @@ use React\EventLoop\Loop;
 
 class BinanceWebSocket extends Command
 {
-    protected $signature   = 'tracker:binance-websocket {timeframe?}';
+    protected $signature   = 'tracker:binance-websocket {timeframe?} {--once}';
     protected $description = 'Fetch volume data in real-time using Binance WebSocket.';
 
     protected $timeframe;
+    protected $runOnce = false;
 
     protected $cryptos = [];
+    protected $processedCryptos = [];
 
     public function handle()
     {
         $this->timeframe = $this->argument('timeframe') ?? '15m';
+        $this->runOnce = $this->option('once');
 
         $this->info('Connecting to Binance WebSocket...');
 
-        // Fetch and cache all crypto symbols and their IDs in a normalized format
         $this->cryptos = Crypto::pluck('id', 'symbol')->mapWithKeys(function ($id, $symbol) {
             return [strtoupper(str_replace('/', '', $symbol)) => $id];
         })->toArray();
@@ -36,7 +38,6 @@ class BinanceWebSocket extends Command
             return 0;
         }
 
-        // Prepare streams
         $cryptoSymbols = array_keys($this->cryptos);
         $streams       = implode('/', array_map(
             fn($symbol) => strtolower($symbol) . '@kline_' . $this->timeframe,
@@ -48,27 +49,28 @@ class BinanceWebSocket extends Command
         $loop      = Loop::get();
         $connector = new Connector($loop);
 
-        // Buffer for 1m timeframe
         $buffer = [];
 
         $connector($url)->then(
             function ($connection) use ($loop, &$buffer) {
                 $this->info('Connected to Binance WebSocket.');
 
-                // Collect messages in the buffer
                 $connection->on('message', function ($message) use (&$buffer) {
                     $data = json_decode($message, true);
-
                     if (isset($data['data'])) {
                         $buffer[] = $data['data'];
                     }
                 });
 
-                // Add a periodic timer to process the buffer every 10 seconds
-                $loop->addPeriodicTimer(10, function () use (&$buffer) {
+                $loop->addPeriodicTimer(10, function () use (&$buffer, $connection, $loop) {
                     if (!empty($buffer)) {
                         $this->processBufferedData($buffer);
-                        $buffer = []; // Clear the buffer after processing
+                        $buffer = [];
+                    }
+
+                    if ($this->runOnce && count($this->processedCryptos) === count($this->cryptos)) {
+                        $connection->close();
+                        $loop->stop();
                     }
                 });
 
@@ -86,15 +88,16 @@ class BinanceWebSocket extends Command
 
     protected function processKlineData(array $data)
     {
-        // Normalize WebSocket symbol format to match cached data
-        $symbol = strtoupper($data['s']); // WebSocket sends uppercase symbols like BTCUSDT
-
-        // Get the crypto ID from the cached cryptos property
+        $symbol   = strtoupper($data['s']);
         $cryptoId = $this->cryptos[$symbol] ?? null;
 
         if (!$cryptoId) {
             $this->warn("Crypto not found: $symbol");
             return;
+        }
+
+        if (!in_array($cryptoId, $this->processedCryptos)) {
+            $this->processedCryptos[] = $cryptoId;
         }
 
         $kline = $data['k'];
@@ -113,30 +116,42 @@ class BinanceWebSocket extends Command
                 ->where('timestamp', '!=', $timestamp)
                 ->take(49)
                 ->get()->reverse();
-
         });
 
-        $closePrices = $recentData->pluck('close')->toArray();
-        $volumes     = $recentData->pluck('last_volume')->toArray();
         $highs       = $recentData->pluck('high')->toArray();
         $lows        = $recentData->pluck('low')->toArray();
-
+        $closePrices = $recentData->pluck('close')->toArray();
+        $volumes     = $recentData->pluck('last_volume')->toArray();
+        $last        = optional($recentData->last());
         $highs[]       = $high;
         $lows[]        = $low;
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
-        $macdData = Calculate::MACD($closePrices);
+        $recentHigh = $last->meta['recent_high'] ?? max($highs);
+        $recentLow  = $last->meta['recent_low'] ?? min($lows);
 
-        $previousClose = $recentData->last()?->close ?? $close;
+        if ($high > $recentHigh) {
+            $recentHigh = $high;
+        }
+
+        if ($low < $recentLow) {
+            $recentLow = $low;
+        }
+
+
+        $fibonacciLevels = $this->calculateFibonacciLevels($recentHigh, $recentLow);
+        $entryScore      = $this->calculateEntryScore($close, $recentHigh, $recentLow, $fibonacciLevels);
+
+        $macdData      = Calculate::MACD($closePrices);
+        $adxData       = Calculate::ADX($highs, $lows, $closePrices, 14);
+        $atr           = Calculate::ATR($highs, $lows, $closePrices);
+        $rsi           = Calculate::RSI($closePrices);
+        $previousClose = $last->close ?? $close;
         $priceChange   = $previousClose != 0
         ? (($close - $previousClose) / $previousClose) * 100
         : 0;
-
-        $previousHistogram = $recentData->last()?->meta['histogram'] ?? 0;
-
-        // Calculate ADX, +DI, and -DI
-        $adxData = Calculate::ADX($highs, $lows, $closePrices, 14);
+        $previousHistogram = $last->meta['histogram'] ?? 0;
 
         VolumeData::updateOrCreate(
             [
@@ -159,16 +174,19 @@ class BinanceWebSocket extends Command
                 'price_ema_25' => Calculate::EMA($closePrices, 25),
                 'price_ema_50' => Calculate::EMA($closePrices, 50),
                 'meta'         => [
-                    'atr'                => Calculate::ATR($highs, $lows, $closePrices),
+                    'recent_high'        => $recentHigh,
+                    'recent_low'         => $recentLow,
+                    'fibonacci_levels'   => $fibonacciLevels,
+                    'entry_score'        => $entryScore,
+                    'atr'                => $atr,
                     'macd_line'          => $macdData['macd_line'],
                     'signal_line'        => $macdData['signal_line'],
                     'histogram'          => $macdData['histogram'],
                     'previous_histogram' => $previousHistogram,
-                    'rsi'                => Calculate::RSI($closePrices),
+                    'rsi'                => $rsi,
                     'adx'                => $adxData['adx'],
                     '+di'                => $adxData['+di'],
                     '-di'                => $adxData['-di'],
-
                 ],
             ]
         );
@@ -181,6 +199,42 @@ class BinanceWebSocket extends Command
         }
     }
 
+    protected function calculateFibonacciLevels($high, $low)
+    {
+        $difference = $high - $low;
+
+        return [
+            'level_0'    => $high,
+            'level_38_2' => $high - $difference * 0.382,
+            'level_50'   => $high - $difference * 0.5,
+            'level_61_8' => $high - $difference * 0.618,
+            'level_100'  => $low,
+        ];
+    }
+
+    protected function calculateEntryScore($currentPrice, $recentHigh, $recentLow, $fibonacciLevels)
+    {
+        $range = $recentHigh - $recentLow;
+
+        $lowProximityScore = max(0, min(100, 100 * (1 - ($currentPrice - $recentLow) / $range)));
+        $fibScores         = [
+            'level_61_8' => 60,
+            'level_50'   => 40,
+            'level_38_2' => 20,
+        ];
+
+        $fibonacciScore = 0;
+        foreach ($fibScores as $level => $weight) {
+            $distance        = abs($currentPrice - $fibonacciLevels[$level]);
+            $rangeProportion = $distance / $range;
+            $fibonacciScore += max(0, $weight * (1 - $rangeProportion));
+        }
+
+        $highProximityScore = max(0, min(100, 100 * ($recentHigh - $currentPrice) / $range));
+
+        return round(0.5 * $lowProximityScore + 0.4 * $fibonacciScore + 0.1 * $highProximityScore, 2);
+    }
+
     protected function cacheTime()
     {
         $times = [
@@ -189,7 +243,6 @@ class BinanceWebSocket extends Command
             '1h'  => 60 * 60 + 1,
         ];
 
-        return $times[$this->timeframe];
+        return $times[$this->timeframe] ?? 60;
     }
-
 }

@@ -36,6 +36,13 @@
                     @endif
                 </th>
 
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('entry_score')">
+                    Entry Score
+                    @if($sortColumn === 'entry_score')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+
                 <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('volume_1m')">
                     1m Volume
                     @if($sortColumn === 'volume_1m')
@@ -88,6 +95,13 @@
                         @if($sortDirection === 'asc') ↑ @else ↓ @endif
                     @endif
                 </th>
+
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('4h_ema_trend')">
+                    4h EMA Trend
+                    @if($sortColumn === '4h_ema_trend')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -100,6 +114,8 @@
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_15m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_1h'] }}</td>
 
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['entry_score'] }}</td>
+
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_1m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_15m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_1h'] }}</td>
@@ -111,6 +127,7 @@
                     
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['15m_ema_trend'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['1h_ema_trend'] }}</td>
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['4h_ema_trend'] }}</td>
                 </tr>
             @empty
                 <tr>
