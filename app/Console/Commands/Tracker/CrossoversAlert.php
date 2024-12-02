@@ -31,46 +31,23 @@ class CrossoversAlert extends Command
     {
         $this->info('Tracking new EMA crossovers...');
 
-        // Fetch the top 120 cryptos by 24-hour trading volume
-        $topCryptos = Crypto::orderByDesc('volume24')
-            ->pluck('id');
+        $cryptos = Crypto::orderByDesc('volume24')
+            ->with('latest1m', 'latest15m', 'latest1h', 'latest4h', 'alerts') // Eager load the required data
+            ->get();
 
-        if ($topCryptos->isEmpty()) {
+        if ($cryptos->isEmpty()) {
             $this->info('No cryptos available for analysis.');
             return 0;
         }
 
-        // Fetch recent volume data
-        $recentData = VolumeData::with('crypto.alerts', 'crypto.latest1h')
-            ->whereIn('volume_data.crypto_id', $topCryptos)
-            ->where('timeframe', '15m') // Ensure the outer query also checks the timeframe
-            ->joinSub(
-                VolumeData::select('crypto_id', VolumeData::raw('MAX(timestamp) AS latest_timestamp'))
-                    ->where('timeframe', '15m') // Only consider 15m timeframe for the subquery
-                    ->groupBy('crypto_id'),
-                'latest',
-                function ($join) {
-                    $join->on('volume_data.crypto_id', '=', 'latest.crypto_id')
-                        ->on('volume_data.timestamp', '=', 'latest.latest_timestamp');
-                }
-            )
-            ->get();
-
-        if(request('dd')) {
-            dd($recentData->pluck('timestamp'));
-        }
-
-
         $newCrossovers = [];
 
         /**
-         * @var VolumeData $data
+         * @var Crypto $crypto
          */
-        foreach ($recentData as $data) {
-            $currentTrend = $this->determineTrend($data);
+        foreach ($cryptos as $crypto) {
+            $currentTrend = $this->determineTrend($crypto);
 
-            // Get the previous trend from the crypto record
-            $crypto        = $data->crypto;
             $previousTrend = $crypto->last_trend;
 
             // Check if the trend has changed
@@ -79,27 +56,27 @@ class CrossoversAlert extends Command
                     'crypto'         => $crypto,
                     'trend'          => $currentTrend,
                     'previous_trend' => $previousTrend,
-                    'ema_15'         => $data->price_ema_15,
-                    'ema_25'         => $data->price_ema_25,
-                    'ema_50'         => $data->price_ema_50,
-                    'price'          => $data->close,
-                    'timestamp'      => $data->timestamp,
-                    'atr'            => $data->getNormalizedAtr(),
-                    'macd_line'      => $data->meta->get('macd_line'),
-                    'signal_line'    => $data->meta->get('signal_line'),
-                    'histogram'      => $data->meta->get('histogram'),
-                    'rsi'            => $data->meta->get('rsi'),
-                    'adx'            => $data->meta->get('adx'),
-                    '+di'            => $data->meta->get('+di'),
-                    '-di'            => $data->meta->get('-di'),
-                    'entry'          => $data->latest_price,
-                ] + $this->setup($data, $currentTrend);
+                    'ema_15'         => $crypto->latest15m->price_ema_15,
+                    'ema_25'         => $crypto->latest15m->price_ema_25,
+                    'ema_50'         => $crypto->latest15m->price_ema_50,
+                    'price'          => $crypto->latest15m->close,
+                    'timestamp'      => $crypto->latest15m->timestamp,
+                    'atr'            => $crypto->latest15m->getNormalizedAtr(),
+                    'macd_line'      => $crypto->latest15m->meta->get('macd_line'),
+                    'signal_line'    => $crypto->latest15m->meta->get('signal_line'),
+                    'histogram'      => $crypto->latest15m->meta->get('histogram'),
+                    'rsi'            => $crypto->latest15m->meta->get('rsi'),
+                    'adx'            => $crypto->latest15m->meta->get('adx'),
+                    '+di'            => $crypto->latest15m->meta->get('+di'),
+                    '-di'            => $crypto->latest15m->meta->get('-di'),
+                    'entry'          => $crypto->latest1m->latest_price,
+                ] + $this->setup($crypto->latest15m, $currentTrend);
 
                 $newCrossovers[] = $crossover;
 
                 Alert::create([
-                    'crypto_id' => $data->crypto_id,
-                    'volume_id' => $data->id,
+                    'crypto_id' => $crypto->id,
+                    'volume_id' => $crypto->latest15m->id,
                 ] + $crossover);
 
                 // Update the last_trend in the database
@@ -125,11 +102,12 @@ class CrossoversAlert extends Command
      * @param VolumeData $data
      * @return string 'bullish', 'bearish', or 'neutral'
      */
-    protected function determineTrend(VolumeData $data): string
+    protected function determineTrend(Crypto $crypto): string
     {
         // $normalizedAtr = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
 
-        // Retrieve VW-MACD data
+        $data = $crypto->latest15m;
+
         $macdLine          = $data->meta->get('macd_line');
         $signalLine        = $data->meta->get('signal_line');
         $histogram         = $data->meta->get('histogram');
@@ -143,18 +121,18 @@ class CrossoversAlert extends Command
         $minusDI = $data->meta->get('-di');
 
         // Retrieve RSI
-        $rsi = $data->meta->get('rsi');
+        $rsi = $crypto->latest1m->meta->get('rsi');
 
         // Histogram Momentum: Looking for growing positive or negative momentum
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
         $momentumDown = $histogram < 0 && $histogram < $previousHistogram;
 
-        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 50 && $macdLine1H > $signalLine1H ;
-        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 60 && $macdLine1H < $signalLine1H;
+        $bullish = $macdLine > $signalLine && $momentumUp && $rsi < 40 && $macdLine1H > $signalLine1H ;
+        $bearish = $macdLine < $signalLine && $momentumDown && $rsi > 65 && $macdLine1H < $signalLine1H;
 
         if (env('LOG_ALERTS')) {
             Log::channel('observe')->info('trend check', [
-                'crypto'            => $data->crypto->base_asset,
+                'crypto'            => $crypto->base_asset,
                 'adx'               => $adx,
                 'plusDI'            => $plusDI,
                 'minusDI'           => $minusDI,
@@ -171,13 +149,13 @@ class CrossoversAlert extends Command
                 'bearish'           => $bearish,
                 'bearishMCAD'       => $macdLine < $signalLine,
                 'momentumDown'      => $momentumDown,
-                'bearishRSI'        => $rsi > 75,
+                'bearishRSI'        => $rsi > 65,
                 'bearishDI'         => $minusDI > $plusDI,
             ]);
         }
 
         // Include ADX confirmation for trend strength
-        if ($adx > 25) {
+        if ($adx > 20) {
             if ($bullish) {
                 return 'bullish';
             }
