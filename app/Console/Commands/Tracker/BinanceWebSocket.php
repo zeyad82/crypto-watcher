@@ -128,17 +128,8 @@ class BinanceWebSocket extends Command
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
-        $recentHigh = $last->meta['recent_high'] ?? max($highs);
-        $recentLow  = $last->meta['recent_low'] ?? min($lows);
-
-        if ($high > $recentHigh) {
-            $recentHigh = $high;
-        }
-
-        if ($low < $recentLow) {
-            $recentLow = $low;
-        }
-
+        $recentHigh = max(array_merge($highs, array_filter([$last->meta['recent_high'], $high])));
+        $recentLow  = min(array_merge($lows, array_filter([$last->meta['recent_low'], $low])));
 
         $fibonacciLevels = $this->calculateFibonacciLevels($recentHigh, $recentLow);
         $entryScore      = $this->calculateEntryScore($close, $recentHigh, $recentLow, $fibonacciLevels);
@@ -215,6 +206,11 @@ class BinanceWebSocket extends Command
     protected function calculateEntryScore($currentPrice, $recentHigh, $recentLow, $fibonacciLevels)
     {
         $range = $recentHigh - $recentLow;
+
+        if ($range == 0) {
+            // If range is zero, return a default score
+            return $currentPrice == $recentHigh ? 100 : 0;
+        }
 
         $lowProximityScore = max(0, min(100, 100 * (1 - ($currentPrice - $recentLow) / $range)));
         $fibScores         = [

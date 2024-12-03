@@ -46,6 +46,7 @@ class Cryptos extends Component
                 'rsi_1m'           => $latest1m->meta['rsi'] ?? 0,
                 'rsi_15m'          => $latest15m->meta['rsi'] ?? 0,
                 'rsi_1h'           => $latest1h->meta['rsi'] ?? 0,
+                'rsi_4h'           => $latest4h->meta['rsi'] ?? 0,
 
                 'entry_score'      => $latest4h->meta['entry_score'] ?? 0,
 

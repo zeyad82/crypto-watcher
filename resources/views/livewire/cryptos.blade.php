@@ -36,6 +36,13 @@
                     @endif
                 </th>
 
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('rsi_4h')">
+                    4h RSI
+                    @if($sortColumn === 'rsi_4h')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+
                 <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('entry_score')">
                     Entry Score
                     @if($sortColumn === 'entry_score')
@@ -113,6 +120,7 @@
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_1m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_15m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_1h'] }}</td>
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_4h'] }}</td>
 
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['entry_score'] }}</td>
 

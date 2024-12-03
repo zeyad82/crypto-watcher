@@ -17,7 +17,9 @@ class MainController extends Controller
 
     public function test()
     {
-        Artisan::call('tracker:rsi-alert');
+        $array = [1, 2, 3, 4, 5];
+
+        Artisan::call('tracker:binance-websocket 4h --once');
 
         dd('ss');
 
