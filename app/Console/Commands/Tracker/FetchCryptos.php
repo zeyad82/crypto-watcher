@@ -29,6 +29,10 @@ class FetchCryptos extends Command
      */
     protected $exchange;
 
+    protected $stable = [
+        'EUR', 'FDUSD', 'USDC'
+    ];
+
     public function __construct()
     {
         parent::__construct();
@@ -56,7 +60,7 @@ class FetchCryptos extends Command
 
             // Filter for active USDT trading pairs
             $usdtMarkets = collect($markets)
-                ->filter(fn($market) => $market['active'] && $market['quote'] === 'USDT')
+                ->filter(fn($market) => $market['active'] && $market['quote'] === 'USDT' && ! in_array($market['base'], $this->stable))
                 ->map(function ($market) use ($tickers) {
                     $symbol = $market['symbol'];
                     $volume = $tickers[$symbol]['quoteVolume'] ?? 0; // Get 24-hour volume

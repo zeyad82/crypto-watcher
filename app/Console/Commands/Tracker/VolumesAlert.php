@@ -3,7 +3,6 @@
 namespace App\Console\Commands\Tracker;
 
 use App\Models\Crypto;
-use App\Models\VolumeData;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
@@ -33,7 +32,7 @@ class VolumesAlert extends Command
         $this->info('Tracking new volume spikes...');
 
         // Fetch all cryptos ordered by 24-hour volume
-        $allCryptos = Crypto::orderByDesc('volume24')->get();
+        $allCryptos = Crypto::with('latest1m', 'latest15m', 'latest1h')->orderByDesc('volume24')->get();
 
         $this->rank = [
             'top20'  => $allCryptos->take(20)->pluck('id')->toArray(),
@@ -41,28 +40,13 @@ class VolumesAlert extends Command
             'top120' => $allCryptos->slice(50, 70)->pluck('id')->toArray(),
         ];
 
-        // Fetch recent volume data
-        $recentData = VolumeData::with('crypto')
-            ->where('timeframe', '15m') // Ensure the outer query also checks the timeframe
-            ->joinSub(
-                VolumeData::select('crypto_id', VolumeData::raw('MAX(timestamp) AS latest_timestamp'))
-                    ->where('timeframe', '15m') // Only consider 15m timeframe for the subquery
-                    ->groupBy('crypto_id'),
-                'latest',
-                function ($join) {
-                    $join->on('volume_data.crypto_id', '=', 'latest.crypto_id')
-                        ->on('volume_data.timestamp', '=', 'latest.latest_timestamp');
-                }
-            )
-            ->get();
-
         $newSpikes = [];
 
         /**
-         * @var VolumeData $data
+         * @var Crypto $crypto
          */
-        foreach ($recentData as $data) {
-            $crypto = $data->crypto;
+        foreach ($allCryptos as $crypto) {
+            $data = $crypto->latest15m;
 
             // Check if a recent alert was already sent
             if ($crypto->last_volume_alert && $crypto->last_volume_alert->equalTo($data->timestamp)) {
@@ -78,13 +62,20 @@ class VolumesAlert extends Command
             }
 
             $newSpikes[] = [
-                'crypto'       => $crypto,
-                'volume'       => $data->last_volume * $data->close,
-                'vma'          => $data->vma_15 * $data->close,
-                'price'        => $data->close,
-                'amplitude'    => $amplitudePercent,
-                'candle_color' => $data->close > $data->open ? 'green' : 'red',
-                'timestamp'    => $data->timestamp,
+                'crypto'          => $crypto,
+                'volume'          => $data->last_volume * $data->close,
+                'vma'             => $data->vma_15 * $data->close,
+                'price'           => $data->close,
+                'amplitude'       => $amplitudePercent,
+                'candle_color'    => $data->close > $data->open ? 'green' : 'red',
+                'entry_score'     => $crypto->latest4h->meta['entry_score'] ?? 'N/A',
+                'price_change_1h' => $crypto->latest1h->price_change,
+                'price_change_4h' => $crypto->latest4h->price_change,
+                'rsi_15m'         => $crypto->latest15m->meta['rsi'] ?? 'N/A',
+                'rsi_1h'          => $crypto->latest1h->meta['rsi'] ?? 'N/A',
+                'rsi_4h'          => $crypto->latest4h->meta['rsi'] ?? 'N/A',
+
+                'timestamp'       => $data->timestamp,
             ];
 
             // Update the last_volume_alert timestamp
@@ -100,12 +91,21 @@ class VolumesAlert extends Command
         $message = "*New Alerts* 🚨\n";
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
-                "\n*#%s*\nVolume: %s USDT\nAmplitude: %s%%\nVMA: %s USDT\nPrice: %s USDT\nTime: %s\n",
+                "\n*#%s*\nPrice: %s USDT\nVolume: %s USDT\nVMA: %s USDT\n\n" .
+                "Entry Score: %s\n Amplitude: %s%%\n 1h Price Change: %s%%\n4h Price Change: %s%%\n\n" .
+                "15m RSI: %s\n1h RSI: %s\n4h RSI: %s\n" .
+                "Time: %s\n",
                 $spike['crypto']->symbol . ($spike['candle_color'] == 'green' ? ' 🟩' : ' 🟥'),
-                number_format($spike['volume'], 2),
-                number_format($spike['amplitude'], 2),
-                number_format($spike['vma'], 2),
                 number_format($spike['price'], 8),
+                number_format($spike['volume'], 2),
+                number_format($spike['vma'], 2),
+                $spike['entry_score'],
+                number_format($spike['amplitude'], 2),
+                $spike['price_change_1h'],
+                $spike['price_change_4h'],
+                $spike['rsi_15m'],
+                $spike['rsi_1h'],
+                $spike['rsi_4h'],
                 Carbon::parse($spike['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s') // Convert timestamp to SA timezone
             );
         }

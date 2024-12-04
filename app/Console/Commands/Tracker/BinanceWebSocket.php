@@ -74,8 +74,9 @@ class BinanceWebSocket extends Command
                     }
                 });
 
-                $connection->on('close', function () {
+                $connection->on('close', function () use ($loop) {
                     $this->warn('WebSocket connection closed.');
+                    $loop->stop();
                 });
             },
             function ($error) {
@@ -128,8 +129,8 @@ class BinanceWebSocket extends Command
         $closePrices[] = $close;
         $volumes[]     = $volume;
 
-        $recentHigh = max(array_merge($highs, array_filter([$last->meta['recent_high'], $high])));
-        $recentLow  = min(array_merge($lows, array_filter([$last->meta['recent_low'], $low])));
+        $recentHigh = max(array_merge($highs, array_filter([$last->meta['recent_high'] ?? null, $high])));
+        $recentLow  = min(array_merge($lows, array_filter([$last->meta['recent_low'] ?? null, $low])));
 
         $fibonacciLevels = $this->calculateFibonacciLevels($recentHigh, $recentLow);
         $entryScore      = $this->calculateEntryScore($close, $recentHigh, $recentLow, $fibonacciLevels);

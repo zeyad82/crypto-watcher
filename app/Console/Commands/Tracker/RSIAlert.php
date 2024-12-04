@@ -32,7 +32,7 @@ class RSIAlert extends Command
         $timeframes = ['1m', '15m', '1h'];
 
         // Fetch the latest timestamp for each timeframe and crypto in a single query
-        $cryptos = Crypto::with('latest1m', 'latest15m', 'latest1h')
+        $cryptos = Crypto::with('latest1m', 'latest15m', 'latest1h', 'latest4h')
             ->orderByDesc('volume24')
             ->take(100)
             ->get();
@@ -50,7 +50,7 @@ class RSIAlert extends Command
 
                 $rsi = $data->meta?->get('rsi');
 
-                if ($rsi !== null && $rsi < 40) {
+                if ($rsi !== null && $rsi < 45) {
                     $overSold[] = true;
                 }
             }
@@ -65,6 +65,7 @@ class RSIAlert extends Command
                     '1m_ema_trend'    => $this->getTrend($crypto->latest1m),
                     '15m_ema_trend'    => $this->getTrend($crypto->latest15m),
                     '1h_ema_trend'     => $this->getTrend($crypto->latest1h),
+                    '4h_ema_trend'     => $this->getTrend($crypto->latest4h),
 
                     'timestamp' => $data->timestamp,
                 ];
@@ -92,23 +93,27 @@ class RSIAlert extends Command
     {
         $msg = sprintf(
             "#%s \nPrice: %s USDT\n\n" .
-            "RSI 1m: %s\nRSI 15m: %s\nRSI 1h: %s\n\n" .
-            "1m EMA : %s\n15m EMA: %s\n1h EMA: %s\n\n" .
-            "1m Change: %s%%\n15m Change: %s%%\n1h Change: %s%%\nTime: %s \n\n",
+            "Entry Score: %s\n" .
+            "RSI 1m: %s\nRSI 15m: %s\nRSI 1h: %s\nRSI 4h: %s\n\n" .
+            "1m EMA : %s\n15m EMA: %s\n1h EMA: %s\n4h EMA: %s\n\n" .
+            "1m Change: %s%%\n15m Change: %s%%\n1h Change: %s%%\n4h Change: %s%%\nTime: %s \n\n",
             strtoupper($alert['crypto']->symbol),
             round($alert['price'], 8),
-
+            $alert->crypto->latest4h->meta['entry_score'] ?? 'N/A',
             round($alert['metrics']['RSIs']['1m'], 2),
             round($alert['metrics']['RSIs']['15m'], 2),
             round($alert['metrics']['RSIs']['1h'], 2),
+            round($alert['metrics']['RSIs']['4h'], 2),
 
             $alert['1m_ema_trend'],
             $alert['15m_ema_trend'],
             $alert['1h_ema_trend'],
+            $alert['4h_ema_trend'],
 
             round($alert['metrics']['price_changes']['1m'], 2),
             round($alert['metrics']['price_changes']['15m'], 2),
             round($alert['metrics']['price_changes']['1h'], 2),
+            round($alert['metrics']['price_changes']['4h'], 2),
             Carbon::parse($alert['timestamp'])->timezone('Africa/Johannesburg')->format('Y-m-d H:i:s')
         );
 
@@ -126,7 +131,7 @@ class RSIAlert extends Command
     {
         $priceChanges = [];
         $RSIs         = [];
-        $timeframes   = ['1m', '15m', '1h'];
+        $timeframes   = ['1m', '15m', '1h', '4h'];
 
         foreach ($timeframes as $timeframe) {
             $data = $crypto->{'latest' . $timeframe};
