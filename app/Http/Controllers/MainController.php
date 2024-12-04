@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alert;
+use App\Models\Crypto;
 use App\Models\VolumeData;
 use App\Services\Calculate;
 use Carbon\Carbon;
@@ -17,17 +18,18 @@ class MainController extends Controller
 
     public function test()
     {
-        $array = [1, 2, 3, 4, 5];
+        // Artisan::call('tracker:binance-websocket 4h --once');
 
-        Artisan::call('tracker:binance-websocket 4h --once');
+        // dd('ss');
 
-        dd('ss');
-
-        $recentData = VolumeData::where('crypto_id', 330)
+        $recentData = VolumeData::where('crypto_id', 33)
             ->orderBy('timestamp', 'desc')
-            ->where('timestamp', '<', '2024-11-22 06:15:00')
-            ->take(120)
+            ->where('timeframe', '1h')
+            // ->where('timestamp', '<', '2024-12-04 06:15:00')
+            ->take(50)
             ->get()->reverse()->values();
+        
+
 
         $closePrices = $recentData->pluck('close')->toArray();
         $volumes     = $recentData->pluck('last_volume')->toArray();
@@ -49,6 +51,7 @@ class MainController extends Controller
             '-di'                => $adxData['-di'],
         ];
 
+        dd(Crypto::where('id', 33)->first()->latest1h, $recentData->last());
         dump('data', json_encode($recentData));
         dd('result', json_encode($result));
 

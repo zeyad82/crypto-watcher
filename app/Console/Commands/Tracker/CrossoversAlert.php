@@ -126,8 +126,8 @@ class CrossoversAlert extends Command
         $histogram         = $data->meta->get('histogram');
         $previousHistogram = $data->meta->get('previous_histogram');
 
-        $macdLine1H        = $data->crypto->latest1h->meta->get('macd_line');
-        $signalLine1H      = $data->crypto->latest1h->meta->get('signal_line');
+        $macdLine1H        = $crypto->latest1h->meta->get('macd_line');
+        $signalLine1H      = $crypto->latest1h->meta->get('signal_line');
 
         $adx     = $data->meta->get('adx');
         $plusDI  = $data->meta->get('+di');
