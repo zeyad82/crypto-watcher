@@ -99,7 +99,7 @@ class RSIAlert extends Command
             "1m Change: %s%%\n15m Change: %s%%\n1h Change: %s%%\n4h Change: %s%%\nTime: %s \n\n",
             strtoupper($alert['crypto']->symbol),
             round($alert['price'], 8),
-            $alert->crypto->latest4h->meta['entry_score'] ?? 'N/A',
+            $alert['crypto']->latest4h->meta['entry_score'] ?? 'N/A',
             round($alert['metrics']['RSIs']['1m'], 2),
             round($alert['metrics']['RSIs']['15m'], 2),
             round($alert['metrics']['RSIs']['1h'], 2),

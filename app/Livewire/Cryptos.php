@@ -29,6 +29,9 @@ class Cryptos extends Component
             ->with('latest1m', 'latest15m', 'latest1h', 'latest4h') // Eager load the required data
             // ->take(200)
             ->get();
+            // ->filter(function($crypto) {
+            //     return $crypto->latest1m->latest_price < $crypto->latest4h->price_ema_50;
+            // });
 
         $data = $cryptos->map(function ($crypto) {
             $latest1m  = $crypto->latest1m;

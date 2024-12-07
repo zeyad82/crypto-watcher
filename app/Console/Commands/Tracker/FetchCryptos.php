@@ -30,7 +30,7 @@ class FetchCryptos extends Command
     protected $exchange;
 
     protected $stable = [
-        'EUR', 'FDUSD', 'USDC'
+        'EUR', 'FDUSD', 'USDC', 'USDP', 'EURI', 'AEUR', 'TUSD'
     ];
 
     public function __construct()

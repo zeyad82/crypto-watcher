@@ -54,7 +54,7 @@ class VolumesAlert extends Command
             }
 
             // Identify volume spikes
-            $isSpike          = $data->last_volume > ($data->vma_15 * 2);
+            $isSpike          = $data->last_volume > ($data->vma_15 * 1.5);
             $amplitudePercent = $this->calculateAmplitudePercent($data->high, $data->low); // Calculate percentage change
 
             if (!$isSpike || $amplitudePercent < $this->minPercent($crypto->id)) {
@@ -91,7 +91,8 @@ class VolumesAlert extends Command
         $message = "*New Alerts* 🚨\n";
         foreach ($newSpikes as $spike) {
             $message .= sprintf(
-                "\n*#%s*\nPrice: %s USDT\nVolume: %s USDT\nVMA: %s USDT\n\n" .
+                "\n*#%s*\nPrice: %s USDT\n\n" .
+                "Volume: %s USDT\nVMA: %s USDT\n\n" .
                 "Entry Score: %s\n15m Amplitude: %s%%\n1h Price Change: %s%%\n4h Price Change: %s%%\n\n" .
                 "15m RSI: %s\n1h RSI: %s\n4h RSI: %s\n" .
                 "Time: %s\n",
