@@ -15,11 +15,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        if(! Schema::hasColumn('volume_data', 'price_change')) {
-            Schema::table('volume_data', function (Blueprint $table) {
-                $table->integer('price_change')->nullable()->after('latest_price');
-                $table->string('timeframe')->default('15m')->index()->after('price_change');
-
+        if(! Schema::hasColumn('alerts', 'data')) {
+            Schema::table('alerts', function (Blueprint $table) {
+                $table->json('data')->nullable();
+                $table->dropColumn('volume_id');
             });
         }
 

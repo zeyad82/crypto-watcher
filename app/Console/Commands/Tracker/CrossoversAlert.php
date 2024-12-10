@@ -79,7 +79,7 @@ class CrossoversAlert extends Command
 
                     Alert::create([
                         'crypto_id' => $crypto->id,
-                        'volume_id' => $crypto->latest15m->id,
+                        'data' => $crypto->latest15m->toArray(),
                     ] + $crossover);
 
                     // Update the last_trend in the database
@@ -169,7 +169,7 @@ class CrossoversAlert extends Command
         }
 
         // Include ADX confirmation for trend strength
-        if ($adx > 20) {
+        if ($adx > 22) {
             if ($bullish) {
                 return 'bullish';
             }
@@ -299,20 +299,23 @@ class CrossoversAlert extends Command
 
     protected function setup($data, $trend)
     {
+        $rewardRiskRatio = 2; // Example: 2:1 ratio
+        $atr = $data->meta->get('atr');
+        $entryPrice = $data->latest_price;
+
         if ($trend == 'bullish') {
-            return [
-                'stop_loss' => $data->latest_price - (1.5 * $data->meta->get('atr')),
-                'tp1'       => $data->latest_price + (1 * $data->meta->get('atr')),
-                'tp2'       => $data->latest_price + (2 * $data->meta->get('atr')),
-                'tp3'       => $data->latest_price + (3 * $data->meta->get('atr')),
-            ];
+            $stopLoss = $entryPrice - (1.5 * $atr);
+            $takeProfit = $entryPrice + ($rewardRiskRatio * (1.5 * $atr));
         } else {
-            return [
-                'stop_loss' => $data->latest_price + (1.5 * $data->meta->get('atr')),
-                'tp1'       => $data->latest_price - (1 * $data->meta->get('atr')),
-                'tp2'       => $data->latest_price - (2 * $data->meta->get('atr')),
-                'tp3'       => $data->latest_price - (3 * $data->meta->get('atr')),
-            ];
+            $stopLoss = $entryPrice + (1.5 * $atr);
+            $takeProfit = $entryPrice - ($rewardRiskRatio * (1.5 * $atr));
         }
+
+        return [
+            'stop_loss' => $stopLoss,
+            'tp1' => $takeProfit,
+            'tp2' => $takeProfit + $atr,
+            'tp3' => $takeProfit + (2 * $atr),
+        ];
     }
 }

@@ -21,4 +21,4 @@ Schedule::command(VolumesAlert::class)->everyMinute();
 Schedule::command(UpdateAlertResults::class)->everyMinute();
 
 Schedule::command(BinanceWebSocket::class, ['4h', '--once'])
-->hourlyAt(1);
+->hourlyAt(55);
