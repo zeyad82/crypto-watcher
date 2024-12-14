@@ -68,6 +68,12 @@
                         @if($sortDirection === 'asc') ↑ @else ↓ @endif
                     @endif
                 </th>
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('volume_24h')">
+                    24h Volume
+                    @if($sortColumn === 'volume_24h')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
 
                 <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('price_change_1m')">
                     1m Price Change (%)
@@ -127,6 +133,7 @@
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_1m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_15m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_1h'] }}</td>
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_24h'] }}</td>
 
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['price_change_1m'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['price_change_15m'] }}</td>

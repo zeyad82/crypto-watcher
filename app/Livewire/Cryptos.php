@@ -42,6 +42,7 @@ class Cryptos extends Component
             $rawVolume1m  = $latest1m->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume15m = $latest15m->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume1h  = $latest1h->last_volume * $latest1m->latest_price ?? 0;
+            $rawVolume24h  = $crypto->volume24 ?? 0;
 
             return [
                 'symbol'           => $crypto->symbol,
@@ -62,6 +63,9 @@ class Cryptos extends Component
                 'raw_volume_1h'    => $rawVolume1h,
                 'volume_1h'        => $this->formatNumber($rawVolume1h),
 
+                'raw_volume_24h'    => $rawVolume24h,
+                'volume_24h'        => $this->formatNumber($rawVolume24h),
+
                 'price_change_1m'  => $latest1m->price_change ?? 0,
                 'price_change_15m' => $latest15m->price_change ?? 0,
                 'price_change_1h'  => $latest1h->price_change ?? 0,
@@ -73,7 +77,7 @@ class Cryptos extends Component
         });
 
         // Define the columns that should use raw values for sorting
-        $columnsWithRawValues = ['volume_1m', 'volume_15m', 'volume_1h'];
+        $columnsWithRawValues = ['volume_1m', 'volume_15m', 'volume_1h', 'volume_24h'];
 
         // Determine if the column being sorted has a raw counterpart
         $sortColumn = in_array($this->sortColumn, $columnsWithRawValues)

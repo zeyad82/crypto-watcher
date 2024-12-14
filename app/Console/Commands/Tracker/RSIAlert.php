@@ -29,7 +29,7 @@ class RSIAlert extends Command
     public function handle()
     {
         // Define timeframes to check
-        $timeframes = ['1m', '15m', '1h'];
+        $timeframes = ['1m', '15m', '1h', '4h'];
 
         // Fetch the latest timestamp for each timeframe and crypto in a single query
         $cryptos = Crypto::with('latest1m', 'latest15m', 'latest1h', 'latest4h')
@@ -50,12 +50,12 @@ class RSIAlert extends Command
 
                 $rsi = $data->meta?->get('rsi');
 
-                if ($rsi !== null && $rsi < 45) {
+                if ($rsi !== null && $rsi < 40) {
                     $overSold[] = true;
                 }
             }
 
-            if (count($overSold) == 3 && !Cache::has("alerted_crypto_{$crypto->id}")) {
+            if (count($overSold) >= 4 && !Cache::has("alerted_crypto_{$crypto->id}")) {
                 $metrics  = $this->getMetrics($crypto);
                 $alerts[] = [
                     'crypto'    => $crypto,
