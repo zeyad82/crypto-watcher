@@ -137,8 +137,8 @@ class CrossoversAlert extends Command
         $rsi1m = $crypto->latest1m->meta->get('rsi');
         $rsi15m = $data->meta->get('rsi');
 
-        $rsiBullish = $rsi1m < 40 && $rsi15m < 55;
-        $rsiBearish = $rsi1m > 65 && $rsi15m > 60;
+        $rsiBullish = $rsi1m < 40 && $rsi15m < 60;
+        $rsiBearish = $rsi1m > 60 && $rsi15m > 60;
 
         // Histogram Momentum: Looking for growing positive or negative momentum
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
