@@ -1,9 +1,9 @@
-<div wire:poll.11s class="overflow-auto max-h-screen border border-gray-200">
-    <table class="table-auto w-full border-collapse border border-gray-200">
+<div wire:poll.11s class="overflow-auto max-h-screen">
+    <table class="table-auto w-full border-collapse border border-gray-200 border-t-0">
         <thead class="sticky top-0 bg-gray-100 z-10 shadow">
             <tr class="bg-gray-100">
                 @foreach (Static::columns() as $key => $label)
-                    <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('{{$key}}')">
+                    <th class="border border-gray-200 px-4 py-2 cursor-pointer border-t-0" wire:click="sortBy('{{$key}}')">
                         {{$label}}
                         @if($sortColumn === $key)
                             @if($sortDirection === 'asc') ↑ @else ↓ @endif
