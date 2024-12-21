@@ -138,7 +138,7 @@ class CrossoversAlert extends Command
         $rsi15m = $data->meta->get('rsi');
 
         $rsiBullish = $rsi1m < 40 && $rsi15m < 60;
-        $rsiBearish = $rsi1m > 60 && $rsi15m > 60;
+        $rsiBearish = $rsi1m > 60 && $rsi15m > 45;
 
         // Histogram Momentum: Looking for growing positive or negative momentum
         $momentumUp   = $histogram > 0 && $histogram > $previousHistogram;
@@ -303,19 +303,25 @@ class CrossoversAlert extends Command
         $atr = $data->meta->get('atr');
         $entryPrice = $data->latest_price;
 
+        $takeProfit = [];
+
         if ($trend == 'bullish') {
             $stopLoss = $entryPrice - (1.5 * $atr);
-            $takeProfit = $entryPrice + ($rewardRiskRatio * (1.5 * $atr));
+            $tp = $entryPrice + ($rewardRiskRatio * (1.5 * $atr));
+            $takeProfit['tp1'] = $tp;
+            $takeProfit['tp2'] = $tp + $atr;
+            $takeProfit['tp3'] = $tp + (2 * $atr);
         } else {
             $stopLoss = $entryPrice + (1.5 * $atr);
-            $takeProfit = $entryPrice - ($rewardRiskRatio * (1.5 * $atr));
+            $tp = $entryPrice - ($rewardRiskRatio * (1.5 * $atr));
+
+            $takeProfit['tp1'] = $tp;
+            $takeProfit['tp2'] = $tp - $atr;
+            $takeProfit['tp3'] = $tp - (2 * $atr);
         }
 
         return [
             'stop_loss' => $stopLoss,
-            'tp1' => $takeProfit,
-            'tp2' => $takeProfit + $atr,
-            'tp3' => $takeProfit + (2 * $atr),
-        ];
+        ] + $takeProfit;
     }
 }

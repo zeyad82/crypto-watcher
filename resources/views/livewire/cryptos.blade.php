@@ -43,6 +43,20 @@
                     @endif
                 </th>
 
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('up%')">
+                    Up %
+                    @if($sortColumn === 'up%')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+
+                <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('down%')">
+                    Down %
+                    @if($sortColumn === 'down%')
+                        @if($sortDirection === 'asc') ↑ @else ↓ @endif
+                    @endif
+                </th>
+
                 <th class="border border-gray-200 px-4 py-2 cursor-pointer" wire:click="sortBy('entry_score')">
                     Entry Score
                     @if($sortColumn === 'entry_score')
@@ -128,6 +142,8 @@
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_1h'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['rsi_4h'] }}</td>
 
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['up%'] }}</td>
+                    <td class="border border-gray-200 px-4 py-2">{{ $crypto['down%'] }}</td>
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['entry_score'] }}</td>
 
                     <td class="border border-gray-200 px-4 py-2">{{ $crypto['volume_1m'] }}</td>

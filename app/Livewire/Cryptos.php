@@ -44,6 +44,13 @@ class Cryptos extends Component
             $rawVolume1h  = $latest1h->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume24h  = $crypto->volume24 ?? 0;
 
+            $recentHigh = $latest4h->meta['recent_high'] ?? 0;
+            $recentLow = $latest4h->meta['recent_low'] ?? 0;
+            $latestPrice = $latest1m->latest_price ?? 0;
+
+            $percentUpFromLow = $recentLow ? (($latestPrice - $recentLow) / $recentLow) * 100 : 0;
+            $percentDownFromHigh = $recentHigh ? (($recentHigh - $latestPrice) / $recentHigh) * 100 : 0;
+
             return [
                 'symbol'           => $crypto->symbol,
                 'latest_price_1m'  => $latest1m->latest_price ?? 0,
@@ -52,6 +59,8 @@ class Cryptos extends Component
                 'rsi_1h'           => $latest1h->meta['rsi'] ?? 0,
                 'rsi_4h'           => $latest4h->meta['rsi'] ?? 0,
 
+                'up%'              => round($percentUpFromLow, 2),
+                'down%'            => round($percentDownFromHigh, 2),
                 'entry_score'      => $latest4h->meta['entry_score'] ?? 0,
 
                 'raw_volume_1m'    => $rawVolume1m,
@@ -106,7 +115,7 @@ class Cryptos extends Component
         } elseif ($number >= 1_000) {
             return round($number / 1_000, 2) . 'K';
         }
-        return $number;
+        return round($number, 2);
     }
 
     protected function getTrend(VolumeData $data)
