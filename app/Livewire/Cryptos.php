@@ -27,11 +27,11 @@ class Cryptos extends Component
     {
         $cryptos = Crypto::orderByDesc('volume24')
             ->with('latest1m', 'latest15m', 'latest1h', 'latest4h') // Eager load the required data
-            // ->take(200)
+        // ->take(200)
             ->get();
-            // ->filter(function($crypto) {
-            //     return $crypto->latest1m->latest_price < $crypto->latest4h->price_ema_50;
-            // });
+        // ->filter(function($crypto) {
+        //     return $crypto->latest1m->latest_price < $crypto->latest4h->price_ema_50;
+        // });
 
         $data = $cryptos->map(function ($crypto) {
             $latest1m  = $crypto->latest1m;
@@ -42,13 +42,13 @@ class Cryptos extends Component
             $rawVolume1m  = $latest1m->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume15m = $latest15m->last_volume * $latest1m->latest_price ?? 0;
             $rawVolume1h  = $latest1h->last_volume * $latest1m->latest_price ?? 0;
-            $rawVolume24h  = $crypto->volume24 ?? 0;
+            $rawVolume24h = $crypto->volume24 ?? 0;
 
-            $recentHigh = $latest4h->meta['recent_high'] ?? 0;
-            $recentLow = $latest4h->meta['recent_low'] ?? 0;
+            $recentHigh  = $latest4h->meta['recent_high'] ?? 0;
+            $recentLow   = $latest4h->meta['recent_low'] ?? 0;
             $latestPrice = $latest1m->latest_price ?? 0;
 
-            $percentUpFromLow = $recentLow ? (($latestPrice - $recentLow) / $recentLow) * 100 : 0;
+            $percentUpFromLow    = $recentLow ? (($latestPrice - $recentLow) / $recentLow) * 100 : 0;
             $percentDownFromHigh = $recentHigh ? (($recentHigh - $latestPrice) / $recentHigh) * 100 : 0;
 
             return [
@@ -72,8 +72,8 @@ class Cryptos extends Component
                 'raw_volume_1h'    => $rawVolume1h,
                 'volume_1h'        => $this->formatNumber($rawVolume1h),
 
-                'raw_volume_24h'    => $rawVolume24h,
-                'volume_24h'        => $this->formatNumber($rawVolume24h),
+                'raw_volume_24h'   => $rawVolume24h,
+                'volume_24h'       => $this->formatNumber($rawVolume24h),
 
                 'price_change_1m'  => $latest1m->price_change ?? 0,
                 'price_change_15m' => $latest15m->price_change ?? 0,
@@ -131,5 +131,30 @@ class Cryptos extends Component
         if ($data->price_ema_15 < $data->price_ema_25) {
             return 'bearish';
         }
+    }
+
+    public static function columns()
+    {
+        return [
+            'symbol' => 'Symbol',
+            'latest_price_1m' => 'Price',
+            'rsi_1m' => '1m RSI',
+            'rsi_15m' => '15m RSI',
+            'rsi_1h' => '1h RSI',
+            'rsi_4h' => '4h RSI',
+            'up%' => 'Up %',
+            'down%' => 'Down %',
+            'entry_score' => 'Entry Score',
+            'volume_1m' => '1m Volume',
+            'volume_15m' => '5m Volume',
+            'volume_1h' => '1h Volume',
+            'volume_24h' => '24 Volume',
+            'price_change_1m' => '1m Price Change (%)',
+            'price_change_15m' => '5m Price Change (%)',
+            'price_change_1h' => '1h Price Change (%)',
+            '15m_ema_trend' => '15m EMA Trend',
+            '1h_ema_trend' => '1h EMA Trend',
+            '4h_ema_trend' => '4h EMA Trend',
+        ];
     }
 }
