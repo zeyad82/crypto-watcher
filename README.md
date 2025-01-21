@@ -1,66 +1,183 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Crypto Watcher
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project is a Laravel-based application designed to monitor cryptocurrency real-time data using WebSocket connections and custom scripts for initialization and command execution.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Displays real-time cryptocurrency data in a structured table format.
+- Provides key metrics such as RSI values (1m, 15m, 1h, 4h), price changes, trading volumes, and EMA trends.
+- Alerts for RSI levels, crossovers, and volume changes via `RSIAlert`, `CrossoversAlert`, `VolumesAlert`, and other alert modules.
+- Uses WebSocket streams for continuous and live updates.
+- Includes `init.sh` for setup and `commands.sh` for running the application.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Requirements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **PHP**: 8.2
+- **Laravel**: 11.9
+- **Composer**
+- **Ratchet WebSocket Library**
+- **Shell**: Ensure your system supports Bash scripts (`init.sh` and `commands.sh`).
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Installation
 
-## Laravel Sponsors
+**Clone the Repository**:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+1. Clone the repository:
 
-### Premium Partners
+   ```bash
+   git clone https://github.com/zeyad82/crypto-watcher.git
+   cd crypto-watcher
+   ```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+2. **Install Dependencies**:
 
-## Contributing
+   ```bash
+   composer install
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+3. **Run the Initialization Script**:
+   Execute `init.sh` to set up the application:
 
-## Code of Conduct
+   ```bash
+   ./init.sh
+   ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+   This script ensures all required configurations and dependencies are set up.
 
-## Security Vulnerabilities
+4. **Configure Laravel**:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+   - Ensure Laravel is properly configured (update `.env` with your environment settings).
+
+---
+
+## Usage
+
+### Adding Commands to Cronjob
+
+To ensure continuous operation, add the following to your cronjob:
+
+1. **Edit the Cron Configuration**:
+
+   ```bash
+   crontab -e
+   ```
+
+2. **Add Artisan Schedule Command**:
+   Schedule the Laravel task scheduler to run every minute:
+
+   ```bash
+   * * * * * php /path-to-your-project/artisan schedule:run >> /dev/null 2>&1
+   ```
+
+3. **Add Custom Commands**:
+   If you have custom scripts like `commands.sh`, add them as needed:
+
+   ```bash
+   */15 * * * * /path-to-your-project/commands.sh >> /dev/null 2>&1
+   ```
+
+4. **Run the Application**:
+   Use the `commands.sh` script to start the application:
+
+   ```bash
+   ./commands.sh
+   ```
+
+   This script runs the main monitoring process and logs output as specified.
+---
+
+## Code Structure
+
+### Paths and Commands
+
+#### `php artisan alerts:performance`
+- **Path**: `app/Console/Commands/AlertsPerformance.php`
+- **Description**: Evaluates the performance of alert modules such as `RSIAlert`, `CrossoversAlert`, and `VolumesAlert`. Logs results for analysis and debugging.
+
+#### `php artisan alerts:update-results`
+- **Path**: `app/Console/Commands/UpdateAlertResult.php`
+- **Description**: Updates the database or cache with the latest alert results, ensuring real-time accuracy in displayed data.
+
+#### `php artisan tracker:rsi-alert`
+- **Path**: `app/Console/Commands/Tracker/RSIAlert.php`
+- **Description**: Monitors RSI values and triggers alerts when specific thresholds (e.g., overbought/oversold) are crossed.
+
+#### `php artisan tracker:crossovers-alert`
+- **Path**: `app/Console/Commands/Tracker/CrossoversAlert.php`
+- **Description**: Detects moving average crossovers, such as golden cross and death cross, and alerts on significant trends.
+
+#### `php artisan tracker:volumes-alert`
+- **Path**: `app/Console/Commands/Tracker/VolumesAlert.php`
+- **Description**: Tracks changes in trading volumes and sends alerts when unusual spikes are detected.
+
+#### `Livewire Cryptos Class`
+- **Path**: `App/Livewire/Cryptos`
+- **Description**: Manages the real-time update of the front-end table, reflecting current cryptocurrency data. Interacts with WebSocket streams and Laravel back-end logic.
+
+#### `init.sh`
+- **Path**: `/init.sh`
+- **Description**: Prepares the environment by verifying configurations and installing necessary dependencies. Ensures the application is ready for deployment.
+
+#### `commands.sh`
+- **Path**: `/commands.sh`
+- **Description**: Starts the application’s main processes and schedules continuous monitoring of cryptocurrency data.
+
+---
+
+## Example Output
+
+### Main Dashboard
+![Main Dashboard Screenshot](image.png)
+
+The main page of the application displays the following information for each cryptocurrency pair:
+
+- **Symbol**: The trading pair (e.g., BTC/USDT, ETH/USDT).
+- **Price**: The current price of the cryptocurrency.
+- **RSI Metrics**: Relative Strength Index values for different timeframes (1m, 15m, 1h, 4h).
+- **Price Changes**: Percentage changes in price over various timeframes (1m, 5m, 1h).
+- **Volume Data**: Real-time trading volume data (1m, 5m, 1h, 24h).
+- **EMA Trends**: Exponential Moving Average trends for 15m and 1h timeframes (e.g., bullish, bearish).
+- **Up/Down %**: Percentage of price increases or decreases over the specified period.
+- **Entry Score**: A calculated metric to suggest potential entry points for trades.
+
+The application provides real-time alerts via Telegram with detailed cryptocurrency insights. Below are examples of alerts:
+
+### Example 1: Volume and RSI Alert
+![Telegram Alert Example 1](tg1.png)
+
+### Example 2: EMA and RSI Alert
+![Telegram Alert Example 2](tg2.png)
+
+### Example 3: MACD and Trend Alert
+![Telegram Alert Example 3](tg3.png)
+
+---
+## Troubleshooting
+
+- **Initialization Issues**:
+  Ensure `init.sh` completes successfully before running the application.
+
+- **Connection Errors**:
+  Verify internet connectivity and access to the WebSocket endpoint.
+
+- **Missing Dependencies**:
+  Run `composer install` or re-execute `init.sh` to ensure all dependencies are installed.
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-source and available under the MIT License.
+
+---
+
+## Contributions
+
+Feel free to submit pull requests or create issues to improve this project!
+
