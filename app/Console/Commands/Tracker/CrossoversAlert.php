@@ -113,7 +113,6 @@ class CrossoversAlert extends Command
      */
     protected function determineTrend(Crypto $crypto): string
     {
-        // $normalizedAtr = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
 
         if(! $crypto->latest1m->meta) {
             return 'neutral';
@@ -121,6 +120,7 @@ class CrossoversAlert extends Command
         
         $data = $crypto->latest15m;
 
+        $normalizedAtr     = $data->getNormalizedAtr(); // Calculate ATR as a percentage of price
         $macdLine          = $data->meta->get('macd_line');
         $signalLine        = $data->meta->get('signal_line');
         $histogram         = $data->meta->get('histogram');
@@ -169,7 +169,7 @@ class CrossoversAlert extends Command
         }
 
         // Include ADX confirmation for trend strength
-        if ($adx > 22) {
+        if ($adx > 23 && $normalizedAtr > 2) {
             if ($bullish) {
                 return 'bullish';
             }
